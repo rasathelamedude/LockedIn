@@ -2,6 +2,7 @@
 
 A cross-platform mobile application designed to combat goal abandonment and mental clutter by helping users stay committed to their short-term goals until completion.
 
+
 ## The Problem
 We start ambitious projects—online courses, side projects, skill development—but rarely finish them. We jump from one goal to another, leaving a trail of unfinished achievements that create mental clutter and erode our sense of discipline.
 
