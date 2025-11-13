@@ -1,50 +1,28 @@
-# Welcome to your Expo app 👋
+# LockedIn
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A cross-platform mobile application designed to combat goal abandonment and mental clutter by helping users stay committed to their short-term goals until completion.
 
-## Get started
+## The Problem
+We start ambitious projects—online courses, side projects, skill development—but rarely finish them. We jump from one goal to another, leaving a trail of unfinished achievements that create mental clutter and erode our sense of discipline.
 
-1. Install dependencies
+## The Solution
+LockedIn keeps your unfinished goals visible and holds you accountable. Unlike traditional todo apps that focus on daily task completion, LockedIn stays with you throughout your entire goal journey, tracking consistency and focus until you cross the finish line.
 
-   ```bash
-   npm install
-   ```
+## Core Features
+- **Visual Goal Stack**: All active goals displayed as stacked cards, creating a tangible representation of your commitments
+- **Efficiency Tracking**: Real-time calculation based on focus time, consistency, and deadline proximity
+- **Integrated Pomodoro Timer**: Start focused work sessions directly from each goal
+- **Milestone Breakdown**: Break down ambitious goals into concrete, achievable tasks
+- **Disciplined Aesthetic**: Dark-mode interface designed to evoke focus, clarity, and productive intensity
 
-2. Start the app
+## Philosophy
+**"Finish what you start."** LockedIn is not about doing more—it's about finishing what matters. The app creates intentional pressure through visual design, making your unfinished goals impossible to ignore while providing the structure and accountability to complete them.
 
-   ```bash
-   npx expo start
-   ```
+## Tech Stack
+- React Native
+- Express
+- PostgreSQL
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+*Built for anyone who's tired of starting goals they never finish.*
