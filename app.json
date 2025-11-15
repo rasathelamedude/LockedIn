@@ -4,7 +4,7 @@
     "slug": "lockedin",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/lockedin_icon.png",
     "scheme": "lockedin",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -30,10 +30,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/lockedin_splash.png",
           "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "resizeMode": "cover",
+          "backgroundColor": "#0a0a0a",
           "dark": {
             "backgroundColor": "#000000"
           }
