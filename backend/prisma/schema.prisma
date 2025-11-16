@@ -17,7 +17,7 @@ datasource db {
 model Goal {
   id          Int      @id @default(autoincrement())
   title       String
-  description String?
+  description String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
