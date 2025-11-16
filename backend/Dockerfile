@@ -2,7 +2,6 @@ FROM oven/bun:latest AS base
 WORKDIR /usr/src/app
 
 # install dependencies into temp directory
-# this will cache them and speed up future builds
 FROM base AS install
 RUN mkdir -p /temp/dev
 COPY package.json bun.lock /temp/dev/
@@ -19,11 +18,13 @@ FROM base AS prerelease
 COPY --from=install /temp/dev/node_modules node_modules
 COPY . .
 
+# Generate Prisma Client
+RUN bunx prisma generate
+
 # copy production dependencies and source code into final image
 FROM base AS release
 COPY --from=install /temp/prod/node_modules node_modules
-COPY --from=prerelease /usr/src/app/app.ts .
-COPY --from=prerelease /usr/src/app/package.json .
+COPY --from=prerelease /usr/src/app .
 
 # run the app
 USER bun
