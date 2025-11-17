@@ -9,6 +9,7 @@ export const COLORS = {
   orangeDark: "#ea580c",
   green: "#10b981",
   cyan: "#06b6d4",
+  red: "#ef4444",
 };
 
 export const SPACING = {

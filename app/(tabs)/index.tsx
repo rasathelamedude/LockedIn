@@ -1,15 +1,20 @@
 import CustomGoal from "@/components/CustomGoal";
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 const App = () => {
   const [goals, setGoals] = useState([]);
+  const [todayHours, setTodayHours] = useState(4);
+  const dailyHoursGoal = 8;
 
   useEffect(() => {
     const fetchGoals = async () => {
-      const response = await fetch("http://192.168.100.81:3002/api/v1/goals");
+      const response = await fetch(
+        "https://lockedin-grdd.onrender.com/api/v1/goals"
+      );
       const data = await response.json();
       setGoals(data.data);
     };
@@ -36,11 +41,15 @@ const App = () => {
         <View style={styles.progressCard}>
           <View style={styles.progressHeader}>
             <Text style={styles.progressLabel}>TODAY&apos;S PROGRESS</Text>
-            <Text style={styles.onTrackText}>On Track</Text>
+            <Text
+              style={todayHours >= 4 ? styles.onTrackText : styles.offTrackText}
+            >
+              {todayHours >= 4 ? "ON TRACK" : "OFF TRACK"}
+            </Text>
           </View>
 
           <Text style={styles.progressTime}>
-            4.2 <Text style={styles.progressTimeUnit}>hrs</Text>
+            {todayHours} <Text style={styles.progressTimeUnit}>hrs</Text>
           </Text>
 
           {/* Progress Bar */}
@@ -49,14 +58,26 @@ const App = () => {
               colors={[COLORS.green, COLORS.cyan]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={styles.progressBarFill}
+              style={[
+                styles.progressBarFill,
+                { width: `${(todayHours / dailyHoursGoal) * 100}%` },
+              ]}
             />
           </View>
         </View>
 
         {/* Goal Cards */}
         {goals.length === 0 ? (
-          <Text>No goals found</Text>
+          <View style={styles.emptyGoalsContainer}>
+            <View style={styles.emptyGoalsIconContainer}>
+              <MaterialIcons name="flag" size={40} color="#3f3f3f" />
+            </View>
+            <Text style={styles.emptyGoalsTitle}>No Goals Yet</Text>
+            <Text style={styles.emptyGoalsDescription}>
+              Start your journey by creating your first goal. Stay locked in and
+              finish what you start.
+            </Text>
+          </View>
         ) : (
           goals.map(
             (goal: {
@@ -141,6 +162,11 @@ const styles = StyleSheet.create({
     color: COLORS.green,
     fontWeight: "600",
   },
+  offTrackText: {
+    fontSize: 13,
+    color: COLORS.red,
+    fontWeight: "600",
+  },
   progressTime: {
     fontSize: 40,
     fontWeight: "bold",
@@ -159,7 +185,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   progressBarFill: {
-    width: "70%",
     height: "100%",
     borderRadius: 4,
   },
@@ -168,6 +193,36 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: "center",
     marginTop: SPACING.lg,
+  },
+  emptyGoalsContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: 60,
+  },
+  emptyGoalsIconContainer: {
+    width: 80,
+    height: 80,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: SPACING.lg,
+  },
+  emptyGoalsTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+  },
+  emptyGoalsDescription: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    textAlign: "center",
+    lineHeight: 22,
   },
 });
 

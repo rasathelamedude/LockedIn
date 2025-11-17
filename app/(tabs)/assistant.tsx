@@ -15,7 +15,7 @@ const Assistant = () => {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={100}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0} 
     >
       <View style={styles.content}>
         {/* Header */}
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: SPACING.lg,
     paddingTop: 60,
-    paddingBottom: SPACING.lg,
+    paddingBottom: 100,
   },
   header: {
     flexDirection: "row",
@@ -129,7 +129,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingVertical: 8,
     gap: SPACING.sm,
-    marginBottom: "20%",
   },
   input: {
     flex: 1,
