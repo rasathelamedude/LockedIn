@@ -2,11 +2,13 @@ import { COLORS, RADIUS, SPACING } from "@/constants/styles";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React from "react";
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from "react-native";
 
@@ -14,50 +16,61 @@ const Assistant = () => {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0} 
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
     >
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>ASSISTANT</Text>
-            <Text style={styles.subtitle}>Your goal optimization partner</Text>
-          </View>
-          <MaterialIcons name="auto-awesome" size={24} color={COLORS.orange} />
-        </View>
-
-        {/* Empty State - Centered */}
-        <View style={styles.emptyState}>
-          <View style={styles.emptyIconContainer}>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.content}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View>
+              <Text style={styles.title}>ASSISTANT</Text>
+              <Text style={styles.subtitle}>
+                Your goal optimization partner
+              </Text>
+            </View>
             <MaterialIcons
-              name="chat-bubble-outline"
-              size={40}
-              color="#3f3f3f"
+              name="auto-awesome"
+              size={24}
+              color={COLORS.orange}
             />
           </View>
-          <Text style={styles.emptyTitle}>Ask About Your Goals</Text>
-          <Text style={styles.emptyDescription}>
-            Get personalized guidance, break down complex goals, or ask for
-            strategies to improve your efficiency.
-          </Text>
-        </View>
 
-        {/* Chat Input - Fixed at Bottom */}
-        <View style={styles.inputContainer}>
-          <MaterialIcons
-            name="chat-bubble-outline"
-            size={20}
-            color={COLORS.textSecondary}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Ask for help with your goals..."
-            placeholderTextColor="#3f3f3f"
-            multiline
-          />
+          {/* Empty State - Centered */}
+          <View style={styles.emptyState}>
+            <View style={styles.emptyIconContainer}>
+              <MaterialIcons
+                name="chat-bubble-outline"
+                size={40}
+                color="#3f3f3f"
+              />
+            </View>
+            <Text style={styles.emptyTitle}>Ask About Your Goals</Text>
+            <Text style={styles.emptyDescription}>
+              Get personalized guidance, break down complex goals, or ask for
+              strategies to improve your efficiency.
+            </Text>
+          </View>
+
+          {/* Chat Input - Fixed at Bottom */}
+          <View style={styles.inputContainer}>
+            <MaterialIcons
+              name="chat-bubble-outline"
+              size={20}
+              color={COLORS.textSecondary}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Ask for help with your goals..."
+              placeholderTextColor="#3f3f3f"
+              multiline
+              returnKeyType="done"
+              blurOnSubmit={true}
+              onSubmitEditing={Keyboard.dismiss}
+            />
+          </View>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 };
@@ -127,7 +140,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     paddingHorizontal: SPACING.md,
-    paddingVertical: 8,
+    paddingVertical: 12,
     gap: SPACING.sm,
   },
   input: {
@@ -135,6 +148,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 15,
     maxHeight: 100,
+    paddingTop: 0, // Prevents extra space on iOS
   },
 });
 

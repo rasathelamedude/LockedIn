@@ -45,7 +45,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="assistant"
         options={{
-          title: "ASSISTANT",
+          title: "AI",
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="psychology" size={26} color={color} />
           ),

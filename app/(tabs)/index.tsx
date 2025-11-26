@@ -1,8 +1,10 @@
 import CustomGoal from "@/components/CustomGoal";
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
+import { databaseInit, getAllGoals } from "@/services/database";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 const App = () => {
@@ -11,16 +13,24 @@ const App = () => {
   const dailyHoursGoal = 8;
 
   useEffect(() => {
-    const fetchGoals = async () => {
-      const response = await fetch(
-        "https://lockedin-grdd.onrender.com/api/v1/goals"
-      );
-      const data = await response.json();
-      setGoals(data.data);
-    };
-
-    fetchGoals();
+    databaseInit();
   }, []);
+
+  // Fetch goals on screen focus
+  useFocusEffect(
+    useCallback(() => {
+      const loadGoals = async () => {
+        try {
+          const goals: any = await getAllGoals();
+          setGoals(goals);
+        } catch (error) {
+          console.error("Error fetching goals: ", error);
+        }
+      };
+
+      loadGoals();
+    }, [])
+  );
 
   return (
     <View style={styles.container}>
@@ -79,7 +89,7 @@ const App = () => {
             </Text>
           </View>
         ) : (
-          goals.map(
+          goals?.map(
             (goal: {
               id: number;
               title: string;
@@ -91,6 +101,7 @@ const App = () => {
             }) => (
               <CustomGoal
                 key={goal.id}
+                id={goal.id}
                 title={goal.title}
                 description={goal.description}
                 deadline={goal.deadline}

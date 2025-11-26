@@ -1,10 +1,12 @@
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { LinearGradient } from "expo-linear-gradient";
+import { Link, RelativePathString } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface CustomGoalProps {
+  id: number;
   title: string;
   description: string;
   deadline: string;
@@ -14,6 +16,7 @@ interface CustomGoalProps {
 }
 
 const CustomGoal = ({
+  id,
   title,
   description,
   deadline,
@@ -22,54 +25,62 @@ const CustomGoal = ({
   gradientColors,
 }: CustomGoalProps) => {
   return (
-    <TouchableOpacity style={styles.goalCard} activeOpacity={0.7}>
-      {/* Left Accent Bar */}
-      <LinearGradient
-        colors={gradientColors as [string, string]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={styles.accentBar}
-      />
-
-      {/* Top Section: Title + Efficiency */}
-      <View style={styles.topSection}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.description}>{description}</Text>
-        </View>
-        <Text style={styles.efficiency}>{efficiency}%</Text>
-      </View>
-
-      {/* Progress Bar */}
-      <View style={styles.progressBarContainer}>
+    <Link
+      href={{
+        pathname: "/goal-detail" as RelativePathString,
+        params: { id },
+      }}
+      asChild
+    >
+      <TouchableOpacity style={styles.goalCard} activeOpacity={0.7}>
+        {/* Left Accent Bar */}
         <LinearGradient
           colors={gradientColors as [string, string]}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.progressBarFill, { width: `${efficiency}%` }]}
+          end={{ x: 0, y: 1 }}
+          style={styles.accentBar}
         />
-      </View>
 
-      {/* Bottom Section: Deadline + Time Logged */}
-      <View style={styles.bottomSection}>
-        <View style={styles.infoItem}>
-          <MaterialIcons
-            name="calendar-today"
-            size={14}
-            color={COLORS.textSecondary}
-          />
-          <Text style={styles.infoText}>{deadline}</Text>
+        {/* Top Section: Title + Efficiency */}
+        <View style={styles.topSection}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.description}>{description}</Text>
+          </View>
+          <Text style={styles.efficiency}>{efficiency}%</Text>
         </View>
-        <View style={styles.infoItem}>
-          <MaterialIcons
-            name="access-time"
-            size={14}
-            color={COLORS.textSecondary}
+
+        {/* Progress Bar */}
+        <View style={styles.progressBarContainer}>
+          <LinearGradient
+            colors={gradientColors as [string, string]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.progressBarFill, { width: `${efficiency}%` }]}
           />
-          <Text style={styles.infoText}>{timeLogged} logged</Text>
         </View>
-      </View>
-    </TouchableOpacity>
+
+        {/* Bottom Section: Deadline + Time Logged */}
+        <View style={styles.bottomSection}>
+          <View style={styles.infoItem}>
+            <MaterialIcons
+              name="calendar-today"
+              size={14}
+              color={COLORS.textSecondary}
+            />
+            <Text style={styles.infoText}>{deadline}</Text>
+          </View>
+          <View style={styles.infoItem}>
+            <MaterialIcons
+              name="access-time"
+              size={14}
+              color={COLORS.textSecondary}
+            />
+            <Text style={styles.infoText}>{timeLogged} logged</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    </Link>
   );
 };
 
