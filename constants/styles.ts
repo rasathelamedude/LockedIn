@@ -18,6 +18,7 @@ export const SPACING = {
   md: 16,
   lg: 24,
   xl: 32,
+  xxl: 46,
 };
 
 export const RADIUS = {
@@ -25,3 +26,12 @@ export const RADIUS = {
   md: 16,
   lg: 24,
 };
+
+export const PRESET_COLORS = [
+  "#f59e0b", // Orange
+  "#3b82f6", // Blue
+  "#a855f7", // Purple
+  "#10b981", // Green
+  "#ef4444", // Red
+  "#ec4899", // Pink
+];

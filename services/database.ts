@@ -1,3 +1,4 @@
+import { Goal } from "@/types/goal";
 import * as sqlite from "expo-sqlite";
 
 export const db = sqlite.openDatabaseSync("lockedin.db");
@@ -8,7 +9,7 @@ export const databaseInit = async () => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
       description TEXT,
-      deadline TEXT,
+      deadline DATE,
       efficiency INTEGER DEFAULT 0,
       timeLogged INTEGER DEFAULT 0,
       color TEXT DEFAULT '#f59e0b',
@@ -27,10 +28,16 @@ export const databaseInit = async () => {
     `);
 };
 
-export const getAllGoals = async () => {
-  const goals = await db.getAllAsync(
+export const getAllGoals = async (): Promise<Goal[]> => {
+  const rawGoals: Goal[] = await db.getAllAsync(
     "SELECT * FROM goals ORDER BY createdAt DESC"
   );
+
+  // Add gradient colors
+  const goals = rawGoals.map((goal: any) => ({
+    ...goal,
+    gradientColors: [goal.color, goal.color],
+  }));
 
   return goals;
 };
@@ -47,14 +54,13 @@ export const createGoal = async (goal: {
   deadline: string;
   timeLogged: number;
   color?: string;
-}) => {
+}): Promise<number> => {
   const result: { lastInsertRowId: number } = await db.runAsync(
-    "INSERT INTO goals (title, description, deadline, timeLogged, color) VALUES (?, ?, ?, ?, ?)",
+    "INSERT INTO goals (title, description, deadline, color) VALUES (?, ?, ?, ?)",
     [
       goal.title,
       goal.description || null,
       goal.deadline,
-      goal.timeLogged,
       goal.color || "#f59e0b",
     ]
   );

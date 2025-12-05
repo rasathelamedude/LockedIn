@@ -1,18 +1,24 @@
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
+import { Goal } from "@/types/goal";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, RelativePathString } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-interface CustomGoalProps {
-  id: number;
-  title: string;
-  description: string;
-  deadline: string;
-  efficiency: number;
-  timeLogged: string;
-  gradientColors: string[];
+function formatDeadline(deadlineString: string) {
+  const date = new Date(deadlineString);
+  const today = new Date();
+
+  const daysLeft = Math.ceil(
+    (date.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  if (daysLeft < 0) return "Overdue";
+  if (daysLeft === 0) return "Due Today";
+  if (daysLeft === 1) return "Due Tomorrow";
+
+  return `${daysLeft} days left`;
 }
 
 const CustomGoal = ({
@@ -23,7 +29,7 @@ const CustomGoal = ({
   efficiency,
   timeLogged,
   gradientColors,
-}: CustomGoalProps) => {
+}: Goal) => {
   return (
     <Link
       href={{
@@ -68,7 +74,9 @@ const CustomGoal = ({
               size={14}
               color={COLORS.textSecondary}
             />
-            <Text style={styles.infoText}>{deadline}</Text>
+            <Text style={styles.infoText}>
+              {formatDeadline(deadline.toString())}
+            </Text>
           </View>
           <View style={styles.infoItem}>
             <MaterialIcons
@@ -76,7 +84,7 @@ const CustomGoal = ({
               size={14}
               color={COLORS.textSecondary}
             />
-            <Text style={styles.infoText}>{timeLogged} logged</Text>
+            <Text style={styles.infoText}>{timeLogged}hrs logged</Text>
           </View>
         </View>
       </TouchableOpacity>

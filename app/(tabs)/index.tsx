@@ -1,14 +1,22 @@
 import CustomGoal from "@/components/CustomGoal";
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
 import { databaseInit, getAllGoals } from "@/services/database";
+import { Goal } from "@/types/goal";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
+import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-const App = () => {
-  const [goals, setGoals] = useState([]);
+const Home = () => {
+  const [goals, setGoals] = useState<Goal[]>([]);
   const [todayHours, setTodayHours] = useState(4);
   const dailyHoursGoal = 8;
 
@@ -21,7 +29,7 @@ const App = () => {
     useCallback(() => {
       const loadGoals = async () => {
         try {
-          const goals: any = await getAllGoals();
+          const goals: Goal[] = await getAllGoals();
           setGoals(goals);
         } catch (error) {
           console.error("Error fetching goals: ", error);
@@ -89,30 +97,38 @@ const App = () => {
             </Text>
           </View>
         ) : (
-          goals?.map(
-            (goal: {
-              id: number;
-              title: string;
-              description: string;
-              deadline: string;
-              efficiency: number;
-              timeLogged: string;
-              gradientColors: string[];
-            }) => (
-              <CustomGoal
-                key={goal.id}
-                id={goal.id}
-                title={goal.title}
-                description={goal.description}
-                deadline={goal.deadline}
-                efficiency={goal.efficiency}
-                timeLogged={goal.timeLogged}
-                gradientColors={goal.gradientColors}
-              />
-            )
-          )
+          goals?.map((goal: Goal) => (
+            <CustomGoal
+              key={goal.id}
+              id={goal.id}
+              title={goal.title}
+              description={goal.description || ""}
+              deadline={goal.deadline}
+              efficiency={goal.efficiency}
+              timeLogged={goal.timeLogged}
+              gradientColors={goal.gradientColors}
+              createdAt={goal.createdAt}
+              updatedAt={goal.updatedAt || ""}
+            />
+          ))
         )}
       </ScrollView>
+
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push("/create_goal")}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={[COLORS.orange, COLORS.orangeDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.fabGradient}
+        >
+          <MaterialIcons name="add" size={28} color="#ffffff" />
+        </LinearGradient>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -235,6 +251,26 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 22,
   },
+  fab: {
+    position: "absolute",
+    right: SPACING.lg,
+    bottom: 100, // Above the tab bar
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    overflow: "hidden",
+    elevation: 8, // Android shadow
+    shadowColor: "#000", // iOS shadow
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  fabGradient: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });
 
-export default App;
+export default Home;
