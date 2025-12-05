@@ -33,7 +33,7 @@ const CustomGoal = ({
   return (
     <Link
       href={{
-        pathname: "/goal-detail" as RelativePathString,
+        pathname: "/goal_detail" as RelativePathString,
         params: { id },
       }}
       asChild

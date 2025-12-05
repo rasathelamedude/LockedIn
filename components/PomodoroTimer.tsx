@@ -4,65 +4,82 @@ import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-const PomodoroTimer = ({ gradientColors }: { gradientColors: string[] }) => {
+interface PomodoroTimerProps {
+  gradientColors: [string, string];
+}
+
+const PomodoroTimer = ({ gradientColors }: PomodoroTimerProps) => {
   const [secondsLeft, setSecondsLeft] = useState(25 * 60);
-  const [isRunning, setIsRunning] = useState<boolean>(false);
-  const timerRef = useRef<number | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // Clear any existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    // Start new interval if running
     if (isRunning && secondsLeft > 0) {
-      timerRef.current = setInterval(() => {
-        setSecondsLeft((prevSeconds) => {
-          if (prevSeconds <= 1) {
-            clearInterval(timerRef.current!);
-            setIsRunning(false);
+      intervalRef.current = setInterval(() => {
+        setSecondsLeft((prev) => {
+          if (prev <= 1) {
+            setIsRunning(false); // Auto-stop when timer reaches 0
             return 0;
           }
-
-          return prevSeconds - 1;
+          return prev - 1;
         });
       }, 1000);
     }
 
+    // Cleanup on unmount or when dependencies change
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
       }
     };
   }, [isRunning, secondsLeft]);
 
-  const startFocus = () => {
-    setIsRunning(true);
+  const toggleTimer = () => {
+    setIsRunning(!isRunning);
   };
 
   const resetTimer = () => {
     setIsRunning(false);
     setSecondsLeft(25 * 60);
-
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
     }
   };
 
+  // Format time as MM:SS
+  const minutes = Math.floor(secondsLeft / 60);
+  const seconds = secondsLeft % 60;
+  const timeDisplay = `${String(minutes).padStart(2, "0")}:${String(
+    seconds
+  ).padStart(2, "0")}`;
+
+  // Determine if timer has been used
+  const hasStarted = secondsLeft !== 25 * 60;
+
   return (
     <View style={styles.timerCard}>
+      {/* Timer Display */}
       <View style={styles.timerDisplay}>
-        <Text style={styles.timerDisplay}>{secondsLeft}</Text>
-        <Text style={styles.label}>FOCUS SESSIOn</Text>
+        <Text style={styles.timeText}>{timeDisplay}</Text>
+        <Text style={styles.label}>FOCUS SESSION</Text>
       </View>
 
+      {/* Button Container */}
       <View style={styles.buttonContainer}>
+        {/* Start/Pause Button */}
         <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={startFocus}
           style={styles.button}
+          onPress={toggleTimer}
+          activeOpacity={0.8}
         >
           <LinearGradient
-            colors={
-              isRunning
-                ? ["#374151", "#1f2937"]
-                : (gradientColors as [string, string])
-            }
+            colors={isRunning ? ["#374151", "#1f2937"] : gradientColors}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.gradientButton}
@@ -78,7 +95,8 @@ const PomodoroTimer = ({ gradientColors }: { gradientColors: string[] }) => {
           </LinearGradient>
         </TouchableOpacity>
 
-        {secondsLeft !== 25 * 60 && (
+        {/* Reset Button - Only show if timer has been started */}
+        {hasStarted && (
           <TouchableOpacity
             style={styles.resetButton}
             onPress={resetTimer}
@@ -114,7 +132,7 @@ const styles = StyleSheet.create({
     fontSize: 72,
     fontWeight: "bold",
     color: COLORS.text,
-    letterSpacing: 2,
+    letterSpacing: 4,
     marginBottom: SPACING.xs,
   },
   label: {

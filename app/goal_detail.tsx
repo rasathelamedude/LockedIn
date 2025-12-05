@@ -20,7 +20,6 @@ interface Goal {
   efficiency: number;
   timeLogged: number;
   color: string;
-  milestones?: string[];
 }
 
 const GoalDetail = () => {
@@ -29,7 +28,6 @@ const GoalDetail = () => {
 
   useFocusEffect(
     useCallback(() => {
-      // Fetch goal details
       const fetchGoal = async () => {
         try {
           const goal = await getGoalById(Number(id));
@@ -43,21 +41,28 @@ const GoalDetail = () => {
     }, [id])
   );
 
-  // Calculate days left
-  const deadlineDate = new Date(goal?.deadline!);
-  const today = new Date();
-  const daysLeft = Math.ceil(
-    (deadlineDate.getTime() - today.getTime()) / 86400000
-  );
-
-  // Loading screen
   if (!goal) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ textAlign: "center" }}>Loading...</Text>
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
+
+  // Calculate days left
+  const deadlineDate = new Date(goal.deadline);
+  const today = new Date();
+  const daysLeft = Math.ceil(
+    (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  // Example milestones
+  const milestones = [
+    { id: 1, text: "Complete Module 1", completed: true },
+    { id: 2, text: "Build practice project", completed: true },
+    { id: 3, text: "Complete Module 2", completed: false },
+    { id: 4, text: "Final assessment", completed: false },
+  ];
 
   return (
     <View style={styles.container}>
@@ -67,19 +72,26 @@ const GoalDetail = () => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <MaterialIcons name="arrow-back" size={24} color={"white"} />
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <MaterialIcons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
 
           <View style={styles.efficiencyBadge}>
-            <Text style={styles.efficiencyText}>{goal.efficiency + "%"}</Text>
+            <Text style={styles.efficiencyText}>
+              {goal.efficiency}% Complete
+            </Text>
           </View>
         </View>
 
-        {/* Goal info section */}
-        <View>
+        {/* Goal Info Section */}
+        <View style={styles.goalInfo}>
           <Text style={styles.title}>{goal.title}</Text>
-          <Text style={styles.description}>{goal.description}</Text>
+          <Text style={styles.description}>
+            {goal.description || "No description provided"}
+          </Text>
 
           <View style={styles.metaInfo}>
             <View style={styles.metaItem}>
@@ -88,7 +100,9 @@ const GoalDetail = () => {
                 size={16}
                 color={COLORS.textSecondary}
               />
-              <Text style={styles.metaText}>{daysLeft} days left</Text>
+              <Text style={styles.metaText}>
+                {daysLeft > 0 ? `${daysLeft} days left` : "Overdue"}
+              </Text>
             </View>
             <View style={styles.metaItem}>
               <MaterialIcons
@@ -98,26 +112,54 @@ const GoalDetail = () => {
               />
               <Text style={styles.metaText}>{goal.timeLogged} hrs logged</Text>
             </View>
+            <View style={styles.metaItem}>
+              <MaterialIcons
+                name="flag"
+                size={16}
+                color={COLORS.textSecondary}
+              />
+              <Text style={styles.metaText}>1 hr/day target</Text>
+            </View>
           </View>
         </View>
 
-        {/* Pomodoro timer */}
+        {/* Pomodoro Timer */}
         <PomodoroTimer gradientColors={[goal.color, goal.color]} />
 
-        {/* Milestones section */}
+        {/* Milestones Section */}
         <View style={styles.milestonesSection}>
-          <View>
+          <View style={styles.milestonesHeader}>
             <MaterialIcons name="flag" size={20} color={COLORS.text} />
             <Text style={styles.milestonesTitle}>Milestones</Text>
           </View>
 
           <View style={styles.milestonesList}>
-            {goal.milestones?.map((milestone, index) => (
+            {milestones.map((milestone) => (
               <View
-                key={index}
-                style={[styles.milestoneCard, styles.milestoneCompleted]}
+                key={milestone.id}
+                style={[
+                  styles.milestoneCard,
+                  milestone.completed && styles.milestoneCompleted,
+                ]}
               >
-                <Text style={styles.milestoneText}>{milestone}</Text>
+                {/* Checkbox */}
+                {milestone.completed ? (
+                  <View style={styles.checkboxCompleted}>
+                    <MaterialIcons name="check" size={16} color="#ffffff" />
+                  </View>
+                ) : (
+                  <View style={styles.checkboxEmpty} />
+                )}
+
+                {/* Milestone Text */}
+                <Text
+                  style={[
+                    styles.milestoneText,
+                    milestone.completed && styles.milestoneTextCompleted,
+                  ]}
+                >
+                  {milestone.text}
+                </Text>
               </View>
             ))}
           </View>
