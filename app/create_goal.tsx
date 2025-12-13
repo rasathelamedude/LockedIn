@@ -78,6 +78,7 @@ const CreateGoalPage = () => {
             style={styles.input}
             placeholder="e.g., Complete DevOps Course"
             placeholderTextColor={COLORS.textSecondary}
+            returnKeyType="done"
             value={title}
             onChangeText={setTitle}
           />
