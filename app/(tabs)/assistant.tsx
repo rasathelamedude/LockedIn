@@ -1,6 +1,6 @@
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import React from "react";
+import React, { useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -13,6 +13,8 @@ import {
 } from "react-native";
 
 const Assistant = () => {
+  const [isFocused, setIsFocused] = useState(false);
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -37,20 +39,25 @@ const Assistant = () => {
           </View>
 
           {/* Empty State - Centered */}
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIconContainer}>
-              <MaterialIcons
-                name="chat-bubble-outline"
-                size={40}
-                color="#3f3f3f"
-              />
+          {!isFocused && (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconContainer}>
+                <MaterialIcons
+                  name="chat-bubble-outline"
+                  size={40}
+                  color="#3f3f3f"
+                />
+              </View>
+              <Text style={styles.emptyTitle}>Ask About Your Goals</Text>
+              <Text style={styles.emptyDescription}>
+                Get personalized guidance, break down complex goals, or ask for
+                strategies to improve your efficiency.
+              </Text>
             </View>
-            <Text style={styles.emptyTitle}>Ask About Your Goals</Text>
-            <Text style={styles.emptyDescription}>
-              Get personalized guidance, break down complex goals, or ask for
-              strategies to improve your efficiency.
-            </Text>
-          </View>
+          )}
+
+          {/* Spacer when input is not focused */}
+          {isFocused && <View style={{ flex: 1 }} />}
 
           {/* Chat Input - Fixed at Bottom */}
           <View style={styles.inputContainer}>
@@ -66,6 +73,8 @@ const Assistant = () => {
               multiline
               returnKeyType="done"
               blurOnSubmit={true}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
               onSubmitEditing={Keyboard.dismiss}
             />
           </View>
