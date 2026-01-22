@@ -4,7 +4,7 @@ A cross-platform mobile application designed to combat goal abandonment and ment
 
 
 ## The Problem
-We start ambitious projects—online courses, side projects, skill development—but rarely finish them. We jump from one goal to another, leaving a trail of unfinished achievements that create mental clutter and erode our sense of discipline.
+We start ambitious projects, online courses, side projects, and skill development, but rarely finish them. We jump from one goal to another, leaving a trail of unfinished achievements that create mental clutter and erode our sense of discipline.
 
 ## The Solution
 LockedIn keeps your unfinished goals visible and holds you accountable. Unlike traditional todo apps that focus on daily task completion, LockedIn stays with you throughout your entire goal journey, tracking consistency and focus until you cross the finish line.
@@ -17,12 +17,13 @@ LockedIn keeps your unfinished goals visible and holds you accountable. Unlike t
 - **Disciplined Aesthetic**: Dark-mode interface designed to evoke focus, clarity, and productive intensity
 
 ## Philosophy
-**"Finish what you start."** LockedIn is not about doing more—it's about finishing what matters. The app creates intentional pressure through visual design, making your unfinished goals impossible to ignore while providing the structure and accountability to complete them.
+**"Finish what you start."** LockedIn is not about doing more, it's about finishing what matters. The app creates intentional pressure through visual design, making your unfinished goals impossible to ignore while providing the structure and accountability to complete them.
 
-## Tech Stack
-- React Native
-- Express
-- PostgreSQL
+## Documentation
+This project includes comprehensive documentation, typically created by Product and Engineering teams:
+- [Requirements & Specifications](docs/REQUIREMENTS.md)
+- [System Architecture](docs/ARCHITECTURE.md)
+- [Database Schema](docs/DATABASE_SCHEMA.md)
 
 ---
 
