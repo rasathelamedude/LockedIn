@@ -460,12 +460,222 @@ ON milestones(goal_id, order_index);
 
 1. **Cascade Deletes:** When a goal is deleted, all milestones and sessions are deleted.
 2. **Constraints:**
-    - Goal titles must be unique.
-    - Target Hours > 0
-    - Hours Logged >= 0
-    - Deadline Days >= 1 if set
+   - Goal titles must be unique.
+   - Target Hours > 0
+   - Hours Logged >= 0
+   - Deadline Days >= 1 if set
 3. **Transactions:** All multi-table operations use SQLite transactions.
 4. **No Soft Deletes:** Deleted data is truly deleted (privace-first)
 
 ---
 
+## 6. State Management
+
+### 6.1 Zustand vs SQLite Decision Matrix
+
+| Data Type                  | Storage                                   | Reasoning                                       |
+| -------------------------- | ----------------------------------------- | ----------------------------------------------- |
+| **Current active goal ID** | Zustand                                   | Ephemeral UI state (doesn't need persistence)   |
+| **Goal list**              | SQLite (cached in Zustand)                | Persistent data, pre-loaded on app start        |
+| **Timer state**            | **Both**                                  | SQLite (crash recovery), Zustand (countdown UI) |
+| **Chat messages**          | SQLite (cached in Zustand)                | Persistent, but recent 50 loaded in memory      |
+| **Daily total hours**      | Calculated from SQLite, cached in Zustand | Derived state, recomputed on session end        |
+| **Form inputs**            | Zustand (or useState)                     | Temporary, discarded on cancel                  |
+
+### 6.2 Zustand Store Structure
+
+```typescript
+// src/stores/goalStore.ts
+interface GoalStore {
+  goals: Goal[];
+  activeGoalId: string | null;
+  isLoading: boolean;
+
+  // Actions
+  loadGoals: () => Promise<void>;
+  addGoal: (goal: NewGoal) => Promise<Goal>;
+  updateGoal: (id: string, data: Partial<Goal>) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
+  setActiveGoal: (id: string | null) => void;
+}
+
+// src/stores/timerStore.ts
+interface TimerStore {
+  sessionId: string | null;
+  goalId: string | null;
+  isRunning: boolean;
+  timeRemaining: number; // seconds
+  mode: "pomodoro" | "custom" | "stopwatch";
+
+  // Actions
+  startTimer: (goalId: string, duration: number) => Promise<void>;
+  completeTimer: () => Promise<void>;
+  cancelTimer: () => Promise<void>;
+  tick: () => void; // Called every second
+  pauseTimer: () => void; // NOT IMPLEMENTED (prevents gamin)
+}
+
+// src/stores/chatStore.ts
+interface ChatStore {
+  messages: ChatMessage[];
+  isLoading: boolean;
+  isOffline: boolean;
+
+  // Actions
+  sendMessage: (content: string) => Promise<void>;
+  loadHistory: () => Promise<void>;
+  clearHistory: () => Promise<void>;
+}
+```
+
+### 6.3 State Synchornization Pattern
+
+How do we keep the UI in sync with the data stored in SQLite.
+
+```typescript
+// Pattern: SQLite -> Zustand -> React UI
+
+// 1. On app startup
+useEffect(() => {
+  goalStore.loadGoals(); // Read from SQLite & Populate Zustand
+}, []);
+
+// 2. On user action
+async function handleCreateGoal(data: NewGoal) {
+  // Write to SQLite first (source of truth)
+  const newGoal = await db.insert(goals).values(data).returning();
+
+  // Update Zustand (triggers React re-render)
+  goalStore.setState(state => ({
+    goals: [...state.goals, newGoal]
+  }));
+}
+
+// 3. React components read from Zustand
+function GoalList() {
+  const goals = goalStore(state => state.goals); // Auto re-renders
+
+  return goals.map(goal => <GoalCard key={goal.id} goal={...goal} />);
+}
+```
+
+---
+
+## 7. API Architecture
+
+### 7.1 Endpoint Specification
+
+**Base URL:** `https://locked-in.vercel.app/api`
+
+#### POST /api/chat
+
+**Purpose:** Send user message to AI assistant with goal context
+
+**Request:**
+
+```typescript
+{
+  message: string; // User's question (max 2000 chars)
+  deviceId: string; // Unique device identifier
+  goals: {
+    id: string;
+    title: string;
+    progress: number; // 0-100
+    efficiency: number; // 0-200+
+    hoursLogged: number;
+    targetHours: number;
+    daysLeft: number | null;
+    status: "on_track" | "at_risk" | "behind";
+  }
+  [];
+  recentSessions: {
+    goalTitle: string;
+    date: string; // YYYY-MM-DD
+    duration: number; // minutes
+  }
+  [];
+}
+```
+
+**Response (Success):**
+
+```typescript
+{
+  message: string; // AI response
+  tokensUsed: number; // For monitoring costs
+}
+```
+
+**Response (Error):**
+
+```typescript
+{
+  error: string; // Error message
+  code: "RATE_LIMIT" | "VALIDATION_ERROR" | "API_ERROR" | "NETWORK_ERROR";
+}
+```
+
+**Security Headers:**
+
+```
+Content-Type: application/json
+X-Device-ID: <uuid>
+X-Request-ID: <uuid>          // For debugging
+```
+
+### 7.2 Context Building Strategy
+
+**Goal:** Give Claude enough info to be helpful, but not so much that tokens are wasted.
+
+```typescript
+function buildContextPrompt(data: ChatRequest): string {
+  const { goals, recentSessions, message } = data;
+
+  // 1. Summarize goals
+  const goalsSummary = goals
+    .map(
+      (goal) =>
+        `- ${goal.title}: ${goal.progress}% complete, ` +
+        `${goal.daysLeft ? `${goal.daysLeft} days left` : "no deadline"}, ` +
+        `(${goal.status.toUpperCase()})`,
+    )
+    .join("\n");
+
+  // 2. Summarize recent activity
+  const totalMinutes = recentSessions.reduce(
+    (sum, session) => sum + session.duration,
+    0,
+  );
+  const uniqueGoals = new Set(
+    recentSessions.map((session) => session.goalTitle),
+  ).size;
+
+  return `You are a productivity coach helping a user optimize their goals.
+
+  CURRENT GOALS:
+  ${goalsSummary}
+
+  RECENT ACTIVITY (Last 7 Days):
+  - Total focus time: ${(totalMinutes / 60).toFixed(1)} hours
+  - Goals worked on: ${uniqueGoals}
+  ${recentSessions.length === 0 ? "- No sessions logged yet" : ""}
+
+  USER QUESTION:
+  ${message}
+
+  Provide specific, actionable advice based on their actual data. Be concise.`;
+}
+```
+
+**Token Budget:**
+
+- Context: ~500 tokens
+- User message: ~100 tokens
+- Response: ~400 tokens
+- **Total:** ~1000 tokens/request (~$0.003 per message)
+
+---
+
+## 8. Security Architecture
+
+### 8.1 Threat Model
