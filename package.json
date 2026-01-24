@@ -16,6 +16,8 @@
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.36.1",
     "expo": "~54.0.23",
     "expo-constants": "~18.0.10",
     "expo-drizzle-studio-plugin": "^0.2.1",
@@ -48,7 +50,7 @@
     "@vercel/node": "^5.5.27",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
-    "typescript": "~5.9.2"
+    "typescript": "~5.3.3"
   },
   "private": true
 }

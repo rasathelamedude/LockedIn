@@ -2,7 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const redis = Redis.fromEnv();
 
 const ratelimit = new Ratelimit({
@@ -10,25 +10,31 @@ const ratelimit = new Ratelimit({
   limiter: Ratelimit.slidingWindow(60, "1m"),
 });
 
-export default async function handler(request: Request): Promise<Response> {
+export default async function handler(req, res) {
   // 1. Rate limit
-  const deviceId = request.headers.get("X-Device-ID");
+  const deviceId = req.headers["x-device-id"];
   if (!deviceId) {
-    return new Response("Missing Device ID", { status: 400 });
+    return res.status(400).send("Missing Device ID");
   }
 
   const { success } = await ratelimit.limit(deviceId);
   if (!success) {
-    return new Response("Too many requests", { status: 429 });
+    return res.status(429).send("Too many requests");
   }
 
   // 2. Parse request body
   let body;
-  try {
-    body = await request.json();
-  } catch (error) {
-    console.error("Invalid JSON:", error);
-    return new Response("Invalid JSON", { status: 400 });
+  if (typeof req.body == "string") {
+    try {
+      body = JSON.parse(req.body);
+    } catch (error) {
+      console.error("JSON Parse Error: ", error);
+      return res.status(400).send("Invalid JSON");
+    }
+  } else if (typeof req.body == "object") {
+    body = req.body;
+  } else {
+    return res.status(400).send("Invalid request body");
   }
 
   // 3. Validate input
@@ -37,15 +43,15 @@ export default async function handler(request: Request): Promise<Response> {
     typeof body.message !== "string" ||
     body.message.length > 2000
   ) {
-    return new Response("Invalid input", { status: 400 });
+    return res.status(400).send("Invalid input");
   }
 
   if (!Array.isArray(body.goals)) {
-    return new Response("Invalid goals format", { status: 400 });
+    return res.status(400).send("Invalid goals format");
   }
 
   if (!Array.isArray(body.sessions)) {
-    return new Response("Invalid sessions format", { status: 400 });
+    return res.status(400).send("Invalid sessions format");
   }
 
   // 4. Sanitize input
@@ -57,17 +63,14 @@ export default async function handler(request: Request): Promise<Response> {
   // 5. Build context
   const goalsSummary = body.goals
     .map(
-      (goal: { title: string; progress: string; status: string }) =>
+      (goal) =>
         `- ${goal.title}: ${goal.progress}% (${goal.status || "active"})`,
     )
     .join("\n");
 
   const sessionsSummary = body.sessions
     .slice(0, 10)
-    .map(
-      (session: { date: string; duration: number }) =>
-        `- ${session.date}: ${session.duration} minutes`,
-    )
+    .map((session) => `- ${session.date}: ${session.duration} minutes`)
     .join("\n");
 
   const prompt = `You are a productivity coach helping users optimize their goals.
@@ -93,24 +96,21 @@ export default async function handler(request: Request): Promise<Response> {
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
-    
+
     clearTimeout(timeoutId);
 
     const aiResponse = result.response.text();
 
     // 7. Send Response
-    return new Response(JSON.stringify({ message: aiResponse }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error: any) {
+    return res.status(200).json({ message: aiResponse });
+  } catch (error) {
     clearTimeout(timeoutId);
 
     if (error.name === "AbortError") {
-      return new Response("LLM request timed out", { status: 504 });
+      return res.status(504).send("AI Service timeout");
     }
 
     console.error("Gemini API error:", error);
-    return new Response("AI Service unavailable", { status: 503 });
+    return res.status(503).send("AI Service unavailable");
   }
 }
