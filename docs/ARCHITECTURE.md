@@ -4,7 +4,7 @@
 
 This document describes the technical architecture of **LockedIn**, a cross-platform mobile application for goal tracking and AI-powered productivity optimization.
 
-**Last Updated:** January 23rd 2026
+**Last Updated:** January 24th 2026
 **Version:** 1.0
 **Author:** Rasyar Safin Mustafa
 
@@ -679,3 +679,605 @@ function buildContextPrompt(data: ChatRequest): string {
 ## 8. Security Architecture
 
 ### 8.1 Threat Model
+
+| Threat                | Impact                                     | Mitigation                                  |
+| --------------------- | ------------------------------------------ | ------------------------------------------- |
+| **API key theft**     | Unlimited Claude API usage, financial loss | Store in Vercel env vars, never in app code |
+| **Rate limit bypass** | Backend spam, high costs                   | Device ID tracking, IP rate limiting        |
+| **SQLite data theft** | User's goals/data exposed                  | Device encryption (OS-level), no cloud sync |
+| **Prompt injection**  | AI gives harmful advice                    | Input sanitization, system prompt hardening |
+| **Man-in-the-middle** | Intercept API traffic                      | HTTPS only (enforced by Vercel)             |
+
+### 8.2 Security Implementation
+
+#### Backend Security
+
+````typescript
+// api/chat.ts
+import rateLimit from "@vercel/edge-rate-limit";
+
+const limiter = rateLimit({
+  interval: "1m";
+  uniqueTokenPerInterval: 500, // max 500 device per minute
+});
+
+export default async function handler(req: Request) {
+  // 1. Rate limit
+  const deviceId = req.headers.get("x-device-id");
+  const {success} = await limiter.check(60, deviceId);
+
+  if (!success) {
+    return new Response("Rate limit exceeded", {status: 429});
+  }
+
+  // 2. Input validation
+  const body = await req.json();
+  if (!body.message || body.message.length > 2000) {
+    return new Response("Invalid message", { status: 400 });
+  }
+
+  // 3. Input Sanitization (prevent prompt injection)
+  const sanitized = body.message.replace(/<script>/gi, "").replace(/```/g, ""); // block code fences
+
+  // 4. API call with timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // abort after 30s
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      signal: controller.signal,
+      headers: {
+        "x-api-key": process.env.ANTHROPIC_API_KEY!,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max-token: 1024,
+        message: [{ role: "user", content: buildPrompt(body) }],
+      }),
+    });
+
+    clearTimeout(timeoutId);
+    return response;
+  } catch {
+    clearTimeout(timeoutId);
+    if (error.name === "AbortError") {
+      return new Response("Request timeout", { status: 408 });
+    }
+    throw error;
+  }
+}
+````
+
+#### Mobile App Security
+
+```typescript
+// Generate Device ID on app startup
+async function getDeviceId(): Promise<string> {
+  let deviceId = await SecureStore.getItemAsync("device_id");
+
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    await SecureStore.setItemAsync("device_id", deviceId);
+  }
+
+  return deviceId;
+}
+
+// All API calls include the device ID
+async function callChatAPI(message: string, goals: Goal[]) {
+  const deviceId = await getDeviceId();
+
+  const response = await fetch("https://locked-in.vercel.app/api/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Device-ID": deviceId,
+    },
+    body: JSON.stringify({message, goals});
+  });
+
+  if (!response.ok) {
+    throw new APIError(response.status, await response.text());
+  }
+
+  return response.json();
+}
+```
+
+### 8.3 Privacy Gurantees
+
+1. **No User Accounts:** No email, password, or PII collected
+2. **Local-Only Data:** SQLite never leaves device
+3. **Ephemeral Chat Context:** Backend doesn't log conversations
+4. **No Analytics:** No Firebase, Mixpanel, Segment, etc.
+5. **Open Source:** Code reviewable on GitHub
+
+---
+
+## 9. Error Handling
+
+### 9.1 Error Taxonomy
+
+| Category              | Examples                           | Handling Strategy                    |
+| --------------------- | ---------------------------------- | ------------------------------------ |
+| **Network Errors**    | No internet, timeout, DNS failure  | Retry with backoff, show offline UI  |
+| **Validation Errors** | Invalid goal title, negative hours | Show error toast, prevent submission |
+| **Database Errors**   | SQLite locked, disk full           | Transaction rollback, alert user     |
+| **API Errors**        | Rate limit, Claude downtime        | Graceful degradation, queue retry    |
+| **Unexpected Errors** | Null pointer, JSON parse fail      | Sentry logging, show generic error   |
+
+### 9.2 Error Handling Patterns
+
+#### API Call with Retry
+
+```typescript
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 3,
+): Promise<Response> {
+  let lastError: Error;
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const response = await fetch(url, options);
+
+      if (response.status >= 500) {
+        // Server error, retry
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      return response;
+    } catch (err) {
+      lastError = err;
+
+      // Exponential backoff
+      await new Promise((resolve) =>
+        setTimeout(resolve, 1000 * Math.pow(2, i)),
+      );
+    }
+  }
+
+  throw lastError!;
+}
+```
+
+#### Database Transaction Pattern
+
+```typescript
+async function createGoalwithMilestones(
+  goalData: NewGoal,
+  milestones: NewMilestone[],
+) {
+  return db.transaction(async (tx) => {
+    // 1. Insert goal
+    const [goal] = await tx.insert(goals).values(goalData).returning();
+
+    // 2. Insert milestones (link to goal)
+    const milestonesWithGoalId = milestones.map((milestone) => ({
+      ...milestone,
+      goalId: goal.id,
+    }));
+
+    await tx.insert(milestones).values(milestonesWithGoalId);
+
+    // If any step fails entire transaction rollsback
+    return goal;
+  });
+}
+```
+
+#### Global Error Boundary
+
+```typescript
+// app/_layout.tsx
+import * as Sentry from '@sentry/react-native';
+
+export default function RootLayout() {
+  return (
+    <ErrorBoundary
+      fallback={(error) => <ErrorScreen error={error} />}
+      onError={(error, stackTrace) => {
+        console.error('App error:', error);
+        // Optional: Send to Sentry in production
+        if (__DEV__ === false) {
+          Sentry.captureException(error);
+        }
+      }}
+    >
+      <Stack />
+    </ErrorBoundary>
+  );
+}
+```
+
+---
+
+## 10. Deployment Architecture
+
+### 10.1 Environment Strategy
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    DEVELOPMENT                          │
+│  - Local machine (Expo Go)                              │
+│  - Hot reload enabled                                   │
+│  - Debug mode on                                        │
+│  - Backend: http://localhost:3000/api/chat              │
+│  - Test data in SQLite                                  │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+                    git push dev
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│                     STAGING                             │
+│  - Vercel preview deployment                            │
+│  - URL: locked-in-git-staging.vercel.app                │
+│  - Test Claude API with limited budget ($5)             │
+│  - TestFlight (iOS) / Internal Testing (Android)        │
+└─────────────────────────────────────────────────────────┘
+                          ↓
+                    git push main
+                          ↓
+┌─────────────────────────────────────────────────────────┐
+│                   PRODUCTION                            │
+│  - Vercel production deployment                         │
+│  - URL: locked-in.vercel.app                            │
+│  - Full Claude API budget                               │
+│  - App Store / Play Store (or GitHub Release APK)       │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 10.2 Deployment Checklist
+
+**Mobile App (EAS Build):**
+
+```bash
+# 1. Configure app.json
+{
+  "expo": {
+    "name": "LockedIn",
+    "slug": "locked-in",
+    "version": "1.0.0",
+    "ios": { "bundleIdentifier": "com.yourname.lockedin" },
+    "android": { "package": "com.yourname.lockedin" },
+    "extra": {
+      "apiUrl": process.env.API_URL // Different per env
+    }
+  }
+}
+
+# 2. Build for production
+eas build --platform all --profile production
+
+# 3. Submit to stores (or download APK/IPA)
+eas submit --platform ios
+eas submit --platform android
+```
+
+**Backend (Vercel):**
+
+```bash
+# 1. Connect GitHub repo to Vercel
+
+# 2. Configure environment variables in Vercel dashboard:
+ANTHROPIC_API_KEY=sk-ant-api03-...
+NODE_ENV=production
+
+# 3. Deploy (automatic on git push)
+git push origin main
+
+# 4. Verify deployment
+curl https://locked-in.vercel.app/api/chat \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"message": "test", "goals": []}'
+```
+
+### 10.3 Rollback Strategy
+
+**If production breaks:**
+
+1. **Backend (Vercel):**
+
+   ```bash
+   # Instant rollback to previous deployment
+   vercel rollback
+   ```
+
+2. **Mobile App (Expo OTA):**
+
+   ```bash
+   # Revert to previous update
+   eas update --branch production --message "Rollback to v1.0.0"
+   ```
+
+3. **Database (SQLite):**
+   - No centralized DB, each user's data is local
+   - Include migration rollback in code:
+   ```typescript
+   if (dbVersion > APP_VERSION) {
+     // Downgrade schema
+     await db.execute(sql`ALTER TABLE goals DROP COLUMN new_field`);
+   }
+   ```
+
+## 11. Performance Considerations
+
+### 11.1 Mobile App Performance
+
+| Optimization            | Implementation                                          | Impact                              |
+| ----------------------- | ------------------------------------------------------- | ----------------------------------- |
+| **List Virtualization** | Use `FlashList` instead of `FlatList` for goal list     | 10x faster scrolling for 100+ goals |
+| **Image Optimization**  | No images (icon-only UI)                                | Smaller bundle size                 |
+| **Code Splitting**      | Lazy load chat screen (only when needed)                | Faster initial load                 |
+| **Database Indexing**   | Indexes on `date`, `status`, `goalId` columns           | 5-10x faster queries                |
+| **Memoization**         | `useMemo` for expensive calculations (efficiency score) | Prevents unnecessary re-renders     |
+| **Bundle Size**         | Tree-shaking, no unused libraries                       | <5MB app size                       |
+
+**Performance Budget:**
+
+```
+- App launch: <2 seconds (cold start)
+- Screen transition: <300ms
+- Database query: <100ms
+- UI interaction: 60fps (16ms per frame)
+```
+
+### 11.2 Backend Performance
+
+| Metric           | Target        | How Achieved                          |
+| ---------------- | ------------- | ------------------------------------- |
+| **Cold Start**   | <500ms        | Vercel Edge Functions (vs Lambda ~2s) |
+| **API Response** | <3s           | Claude Sonnet 4 (faster than Opus)    |
+| **Throughput**   | 100 req/s     | Auto-scaling (Vercel handles)         |
+| **Token Usage**  | <1500/request | Prompt engineering, context pruning   |
+
+**Cost Optimization:**
+
+```typescript
+// Only send recent sessions, not all history
+const recentSessions = await db
+  .select()
+  .from(focusSessions)
+  .where(gt(focusSessions.startTime, sevenDaysAgo))
+  .limit(50); // Cap at 50 sessions
+
+// Summarize instead of sending raw data
+const summary = `Worked on ${uniqueGoals} goals, ${totalHours} hours total`;
+// vs sending 50 individual session objects (saves ~200 tokens)
+```
+
+---
+
+## 12. Trade-offs & Constraints
+
+### 12.1 Architecture Decisions & Rationale
+
+#### Decision 1: No User Accounts
+
+**Trade-off:**
+
+- **Pro:** Privacy-first, no server costs, simpler architecture.
+- **Cons:** No cross-device sync, data lost if phone lost.
+
+**Rationale:** Aligns with privacy philosophy and MVP scope. Can add optional cloud backup in v2.
+
+---
+
+#### Decision 2: Single Backend Endpoint
+
+**Trade-off:**
+
+- **Pro:** Simple, easy to maintian, low overhead.
+- **Con:** All logic in one function it could grow large.
+
+**Rationale:** Sufficient for MVP. If chat grows complex (streaming or multi-turn) we can split into `/api/chat/send` and `/api/chat/stream`.
+
+---
+
+#### Decision 3: Zustand over Redux
+
+**Trade-off:**
+
+- **Pro:** 1kb vs 50kb, simple API, no boilerplate.
+- **Con:** Less tooling, no Redux DevTools equivalent.
+
+**Rationale:** Redux is overkill for this app's state complexity. Zustand's simplicity matchs project scope.
+
+---
+
+#### Decision 4: SQLite Over Cloud Database
+
+**Trade-off:**
+
+- **Pro:** Offline-first, instant queries, no backend costs.
+- **Con:** No multi-device sync and manual backups.
+
+**Rationale:** Primary use case is single-device tracking. Cloud DB adds latency and complexity for minimal benefit.
+
+---
+
+#### Decision 5: Expo over Bare React Native
+
+**Trade-off:**
+
+- **Pro:** 10x faster development, OTA updates, and managed builds;
+- **Con:** Larger bundle (+2MB) and less control over native modules.
+
+**Rationale:** For MVP/resume project, development speed > bundle size we can eject to bare React Native later if needed.
+
+---
+
+#### Decision 6: No Conversation Memory in Chat
+
+**Trade-off:**
+
+- **Pro:** Simpler backend, lower token costs and stateless.
+- **Con:** AI can't reference previous messages.
+
+**Rationale:** Most queries are standalone ("Which goal to focus on?"). Multi-turn convos are rare. We can add in v2 if users request.
+
+---
+
+#### Decision 7: Pre-Calculate Efficiency Score
+
+**Trade-off:**
+
+- **Pro:** Instant UI rendering, no computation lag.
+- **Con:** Extra storage, must update every session.
+
+**Rationale:** Efficiency is displayed on every goal card. Calculating 100 goals on every render would freeze UI.
+
+---
+
+### 12.2 Known Limitations
+
+| Limitation                     | Impact                        | Workaround                                  |
+| ------------------------------ | ----------------------------- | ------------------------------------------- |
+| **Max 100 goals**              | UI degrades with 100+ items   | Show warning at 80 goals, suggest archiving |
+| **No real-time collaboration** | Can't share goals with team   | Out of scope (single-user app)              |
+| **Chat requires internet**     | Can't use AI offline          | Clear UI indicator, graceful fallback       |
+| **No data export**             | Hard to migrate to other apps | Future: Add CSV export                      |
+
+---
+
+### 12.3 Future Enhancements (Out of Scope for V1)
+
+1. **Optional Cloud Backup**
+   - E2E encrypted backup to user's iCloud/Google Drive.
+   - Restore on new device.
+2. **Pomodoro Break Reminders**
+   - Notifications for 5-min breaks.
+   - Integration with Do Not Disturb mode.
+3. **Export to Calendar**
+   - Sync deadlines with Google Calendar.
+4. **Collaborative Goals**
+   - Share goals with accountability partners.
+5. **Advanced Analytics**
+   - Focus time heatmap.
+   - Productivity trends over time.
+
+---
+
+## Appendix A: File Structure
+
+```
+locked-in/
+├── app/                          # Expo Router (screens)
+│   ├── (tabs)/
+│   │   ├── index.tsx            # Goals list
+│   │   ├── timer.tsx            # Focus timer
+│   │   ├── analytics.tsx        # Progress stats
+│   │   └── chat.tsx             # AI assistant
+│   ├── goal/
+│   │   └── [id].tsx             # Goal detail
+│   ├── _layout.tsx              # Root layout
+│   └── +not-found.tsx           # 404 screen
+├── components/                   # Reusable UI
+│   ├── GoalCard.tsx
+│   ├── Timer.tsx
+│   ├── ProgressRing.tsx
+│   ├── MilestoneItem.tsx
+│   ├── ChatBubble.tsx
+│   └── EmptyState.tsx
+├── hooks/                        # Custom hooks
+│   ├── useGoals.ts
+│   ├── useTimer.ts
+│   ├── useChat.ts
+│   └── useAnalytics.ts
+├── stores/                       # Zustand state
+│   ├── goalStore.ts
+│   ├── timerStore.ts
+│   └── chatStore.ts
+├── db/                           # Database layer
+│   ├── schema.ts                # Drizzle schema
+│   ├── migrations/              # SQL migrations
+│   │   └── 0001_initial.sql
+│   └── client.ts                # SQLite connection
+├── api/                          # Backend (Vercel)
+│   └── chat.ts                  # Serverless function
+├── utils/                        # Helpers
+│   ├── calculations.ts          # Efficiency formulas
+│   ├── validators.ts            # Zod schemas
+│   └── formatters.ts            # Date/number formatting
+├── constants/
+│   ├── Colors.ts                # Theme colors
+│   └── Config.ts                # App config
+├── types/
+│   └── index.ts                 # TypeScript types
+├── docs/                         # Documentation
+│   ├── REQUIREMENTS.md
+│   ├── ARCHITECTURE.md          # This file
+│   ├── DATABASE_SCHEMA.md
+│   ├── API_REFERENCE.md
+│   └── SETUP.md
+├── package.json
+├── tsconfig.json
+├── app.json                      # Expo config
+├── eas.json                      # Build config
+└── README.md
+```
+
+## Appendix B: Technology Decisions Deep Dive
+
+### Why TypeScript?
+
+- **Type Safety:** Catches 70% of bugs at compile time
+- **Better DX:** Autocomplete, inline docs, refactoring tools
+- **Industry Standard:** 80% of React Native jobs require TS
+- **Drizzle ORM:** Type-safe queries require TypeScript
+
+### Why Drizzle Over Prisma/TypeORM?
+
+- **Size:** 30kb vs 500kb (Prisma)
+- **SQLite Support:** First-class support, no hacks
+- **Type Inference:** Automatic, no codegen needed
+- **Flexibility:** Raw SQL when needed
+
+### Why Zustand Over Redux/MobX?
+
+- **Learning Curve:** 15 min vs 2 hours (Redux)
+- **Boilerplate:** 5 lines vs 50 lines for same store
+- **Bundle Size:** 1kb vs 45kb (Redux + Toolkit)
+- **Performance:** Similar to Redux, better than Context API
+
+### Why NativeWind Over Styled-Components?
+
+- **Consistency:** Same classes as web (Tailwind)
+- **Performance:** Compiled at build time
+- **Bundle Size:** No runtime CSS-in-JS overhead
+- **Prototyping Speed:** Utility-first = fast iteration
+
+### Why Expo Over Bare React Native?
+
+- **Development Speed:** No Xcode/Android Studio setup
+- **OTA Updates:** Fix bugs without app store review
+- **Managed Builds:** EAS Build handles iOS/Android compilation
+- **Ecosystem:** 50+ built-in modules (Camera, SQLite, etc.)
+
+### Why Vercel Over AWS Lambda/Railway?
+
+- **DX:** Deploy on `git push`, zero config
+- **Cold Start:** Edge Functions <100ms vs Lambda ~2s
+- **Free Tier:** 100k requests/month (AWS = 1M but worse DX)
+- **Simplicity:** No VPC, IAM, or CloudFormation
+
+### Why Claude Over GPT-4?
+
+- **Context Window:** 200k tokens (GPT-4 = 128k)
+- **Reasoning:** Better at structured tasks (goal analysis)
+- **Ethics:** Anthropic's alignment research
+- **Cost:** ~$3/M tokens (similar to GPT-4)
+
+---
+
+## Document Change Log
+
+| Version | Date       | Changes                     | Author               |
+| ------- | ---------- | --------------------------- | -------------------- |
+| 1.0     | 2026-01-24 | Initial architecture design | Rasyar Safin Mustafa |
+
+---
