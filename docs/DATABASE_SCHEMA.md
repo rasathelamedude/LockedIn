@@ -802,3 +802,170 @@ async function archiveOldData() {
 ## 10. Backup & Recovery
 
 ### 10.1 Automatic Backups
+
+```typescript
+// Run daily at midnight
+async function createBackup() {
+  // Create backup path
+  const backupPath = `${FileSystem.documentDirectory}backups/`;
+  const timestamp = format(new Date(), "yyyy-MM-dd-HHmmss");
+
+  // Copy the database to path
+  await FileSystem.copyAsync({
+    from: `${FileSystem.documentDirectory}SQLite/lockedin.db`,
+    to: `${backupPath}lockedin-backup-${timestamp}.db`,
+  });
+
+  // Keep only last 7 backups
+  const backups = await FileSystem.readDirectoryAsync(backupPath);
+  if (backups.length > 7) {
+    const oldestBackup = backups.sort()[0];
+    await FileSystem.deleteAsync(`${backupPath}${oldestBackup}`);
+  }
+}
+```
+
+### 10.2 Data Export (Future Enhancement)
+
+```typescript
+// Export all data as JSON
+async function exportData(): Promise<string> {
+  const allGoals = await db.select().from(goals);
+  const allMilestones = await db.select().from(milestones);
+  const allSessions = await db.select().from(focusSessions);
+
+  const exportData = {
+    version: "2.0",
+    exportedAt: new Date().toISOString(),
+    goals: allGoals,
+    milestones: allMilestones,
+    sessions: allSessions,
+  };
+
+  return JSON.stringify(exportData, null, 2);
+}
+```
+
+---
+
+## 11. Testing Strategy
+
+### 11.1 Unit Tests (Database Functions)
+
+```typescript
+// db/tests/goals.test.ts
+import { describe, it, expect, beforeEach } from "@jest/globals";
+import { createGoal, getAllActiveGoals } from "../queries/goals";
+
+describe("Goal CRUD Operations", () => {
+  beforeEach(async () => {
+    await db.delete(goals);
+  });
+
+  it("should create goal with valid data", async () => {
+    const newGoal = await createGoal({
+      title: "Test Goal",
+      targetHours: 20,
+      deadline: new Date(Date.now() + 30 * 86400000),
+    });
+
+    expect(newGoal.id).toBeTruthy();
+    expect(newGoal.title).toBe("Test Goal");
+    expect(newGoal.hoursLogged).toBe(0);
+  });
+
+  it("should reject duplicate titles", async () => {
+    await createGoal({ title: "Unique", targetHours: 10 });
+
+    await expect(
+      createGoal({ title: "Unique", targetHours: 10 }),
+    ).rejects.toThrow("already exists");
+  });
+});
+```
+
+### 13.2 Integration Tests (multi-table operations)
+
+```typescript
+describe("Focus Session Completion", () => {
+  it("should update goal hours and daily progress", async () => {
+    // Setup
+    const goal = await createGoal({ title: "Test", targetHours: 40 });
+
+    // Action
+    await completeSession({
+      goalId: goal.id,
+      durationMinutes: 25,
+    });
+
+    // Assertions
+    const updatedGoal = await getGoalById(goal.id);
+    expect(updatedGoal.hoursLogged).toBeCloseTo(0.417); // 25/60
+
+    const todayProgress = await getTodayProgress();
+    expect(todayProgress.totalMinutes).toBe(25);
+  });
+});
+```
+
+---
+
+## 12. Disaster Recovery
+
+### 12.1 Curroption Detection
+
+```typescript
+// Run on app startup
+async function checkDatabaseIntegrity(): Promise<boolean> {
+  try {
+    const result = await db.execute(sql`PRAGMA integrity_check`);
+    return result[0].integrity_check === "ok";
+  } catch (error) {
+    console.error("Database corrupted:", error);
+    return false;
+  }
+}
+```
+
+### 12.2 Recovery Options
+
+```typescript
+async function recoverDatabase() {
+  const isCorrupted = !(await checkDatabaseIntegrity());
+
+  if (isCorrupted) {
+    // Option 1: Restore from backup
+    const latestBackup = await getLatestBackup();
+    if (latestBackup) {
+      await restoreFromBackup(latestBackup);
+      return;
+    }
+
+    // Option 2: Rebuild database (data loss)
+    Alert.alert(
+      "Database Error",
+      "Database is corrupted and no backup found. Reset app data?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: async () => {
+            await db.execute(sql`DROP TABLE IF EXISTS goals`);
+            await db.execute(sql`DROP TABLE IF EXISTS milestones`);
+            await runMigrations(); // Recreate schema
+          },
+        },
+      ],
+    );
+  }
+}
+```
+
+---
+
+## Document Version
+
+- **Version:** 1.0
+- **Last Updated:** January 25, 2026
+- **Author:** Rasyar Safin Mustafa
