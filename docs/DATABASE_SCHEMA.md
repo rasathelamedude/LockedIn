@@ -487,7 +487,7 @@ const goals = await db
 const goalWithMilestones = await db
   .select({
     goal: goals,
-    milestones: milestones
+    milestones: milestones,
   })
   .from(goals)
   .leftJoin(milestones, eq(milestones.goalId, goals.id))
@@ -527,5 +527,278 @@ const todayProgress = await db
 #### Calculate Current Streak
 
 ```typescript
+const streak = await db.execute(sql`
+  WITH RECURSIVE date_series AS (
+    SELECT dsate('now') as date
+    UNION ALL
+    SELECT date(date, '-1 day')
+    FROM date_series
+    WHERE date > date('now', '-365 days')
+  )
+  SELECT COUNT(*) as streak
+  FROM date_series ds
+  LEFT JOIN daily_progress dp ON ds.date = dp.date
+  WHERE dp.total_minutes > 0
+  ORDER BY ds.date DESC
+  LIMIT 1
+`);
+```
+
+#### Goals Ranked by Urgency (Efficiency + Deadline)
+
+```typescript
+const urgentGoals = await db.execute(sql`
+  SELECT
+    *,
+    CASE
+      WHEN deadline IS NOT NULL
+        THEN (julianday(deadline / 1000, 'unixepoch') - julianday('now'))  * efficiency
+      ELSE efficiency
+    END as urgency_score
+  FROM goals
+  WHERE status = 'active'
+  ORDER BY urgency_score ASC
+  LIMIT 3
+`);
+```
+
+---
+
+## 6. Data Integrity Rules
+
+### 6.1 Application-Level Constraints
+
+These are enforced in TypeScript, not SQL:
+
+```typescript
+// 1. Goal title must be unique
+async function createGoal(data: NewGoal) {
+  const existingGoal = await db
+    .select()
+    .from(goals)
+    .where(eq(goals.title, data.title))
+    .get();
+
+  if (existingGoal) {
+    throw new Error("Goal with title already exists");
+  }
+
+  // ... insert
+}
+
+// 2. Cannot reduce target hours below hoursLogged
+async function updateGoal(id: string, updates: Partial<Goal>) {
+  if (updates.targetHours) {
+    const goal = await db.select().from(goals).where(eq(goals.id, id)).get();
+
+    if (updates.targetHours < goal.loggedHours) {
+      throw new Error("Cannot set target below hours already logged");
+    }
+  }
+
+  // ... update
+}
+
+// 3. Only one active focus session
+async function startFocusSession(goalId: string) {
+  const activeSession = await db
+    .select()
+    .from(focusSessions)
+    .where(eq(focusSessions.status, "active"))
+    .get();
+
+  if (activeSession) {
+    throw new Error("Complete current session before starting a new one");
+  }
+
+  // ... create session
+}
+```
+
+### 6.2 Database-Level Constraints
+
+```sql
+-- Check constraints
+ALTER TABLE goals ADD CONSTRAINT check_target_hours
+  CHECK (target_hours > 0);
+
+ALTER TABLE goals ADD CONSTRAINT check_hours_logged
+  CHECK (hours_logged >= 0);
+
+ALTER TABLE milestones ADD CONSTRAINT check_order_index
+  CHECK (order_index >= 0);
+
+-- Unique constraints
+ALTER TABLE goals ADD CONSTRAINT unique_title
+  UNIQUE (title);
+
+ALTER TABLE daily_progress ADD CONSTRAINT unique_date
+  UNIQUE (date);
+```
+
+---
+
+## 7. Efficiency Calculation Formula
+
+### 7.1 Formula Definition
+
+```typescript
+function calculateEfficiency(goal: Goal): number | null {
+  // If no deadline found, efficiency = simple progress
+  if (!goal.deadline) {
+    return (goal.hoursLogged / goal.targetHours) * 100;
+  }
+
+  // Calculate schedule-based efficiency
+  // Get time boundaries
+  const now = Date.now();
+  const created = goal.createdAt.getTime();
+  const deadline = goal.deadline.getTime();
+
+  // Duration of the goal
+  const totalDuration = deadline - created;
+
+  // How much of that duration had already passed
+  const elapsed = now - created;
+
+  // Expected progress by now (linear expectation)
+  /**
+   * Example:
+   *
+   * Target hours for a goal = 100
+   * Total duration = 30 days // Deadline in 30 days
+   * Elapsed = 15 days // 15 days have passed
+   *
+   * expectedHours = (100 × 15) / 30 = 50 hours
+   *
+   */
+  const expectedHours = Math.max(
+    (goal.targetHours * elapsed) / totalDuration,
+    1,
+  );
+
+  return (goal.hoursLogged / expectedHours) * 100;
+}
+```
+
+### 7.2 Status Determintation
+
+```typescript
+function determineStatus(
+  efficiency: number | null,
+): "On track" | "At risk" | "Behind" {
+  if (efficiency === null || efficiency >= 90) return "On track";
+  if (efficiency >= 70) return "At risk";
+  return "Behind";
+}
+```
+
+### 7.3 Example Calculation
 
 ```
+Goal: "Complete DevOps Course"
+- Target: 40 hours
+- Deadline: 30 days from creation
+- Created: Jan 1, 2026
+- Today: Jan 16, 2026 (15 days elapsed)
+- Hours logged: 18 hours
+
+Expected hours by now:
+  = 40 × (15 / 30) = 20 hours
+
+Efficiency:
+  = (18 / 20) × 100 = 90%
+
+Status: ON TRACK (90% exactly)
+```
+
+---
+
+## 8. File Structure
+
+```
+db/
+├── schema.ts              # Drizzle schema definitions
+├── client.ts              # Database connection & config
+├── migrations/            # Auto-generated SQL migrations
+│   ├── 0001_initial.sql
+│   ├── 0002_add_milestones.sql
+│   └── meta/
+│       └── _journal.json
+└── queries/               # Reusable query functions
+    ├── goals.ts
+    ├── sessions.ts
+    └── analytics.ts
+```
+
+### Example: `db/client.ts`
+
+```typescript
+import { drizzle } from "drizzle-orm/expo-sqlite";
+import { openDatabaseSync } from "expo-sqlite";
+import * as schema from "./schema";
+
+const expoDb = openDatabaseSync("lockedin.db");
+export const db = drizzle(expoDb, { schema });
+```
+
+### Example: `db/queries/goals.ts`
+
+```typescript
+import { db } from "../client";
+import { goals } from "../schema";
+import { eq, desc } from "drizzle-orm";
+
+export async function getAllActiveGoals() {
+  return await db
+    .select()
+    .from(goals)
+    .where(eq(goals.status, "active"))
+    .orderBy(desc(goals.createdAt));
+}
+
+export async function createGoal(data: NewGoal) {
+  const [newGoal] = await db.insert(goals).values(data).returning();
+  return newGoal;
+}
+
+// ... more queries
+```
+
+---
+
+## 9. Storage Estimation
+
+### 9.1 Size Projections
+
+| Table              | Rows (1 year) | Size per Row | Total Size  |
+| ------------------ | ------------- | ------------ | ----------- |
+| **goals**          | 50            | ~200 bytes   | 10 KB       |
+| **milestones**     | 500           | ~100 bytes   | 50 KB       |
+| **focus_sessions** | 1,000         | ~150 bytes   | 150 KB      |
+| **daily_progress** | 365           | ~80 bytes    | 30 KB       |
+| **chat_messages**  | 500           | ~300 bytes   | 150 KB      |
+| **Indexes**        | -             | -            | 50 KB       |
+| **Total**          | -             | -            | **~440 KB** |
+
+**After 5 years:** ~2.2 MB (negligible for modern phones)
+
+### 9.2 Cleanup Strategy
+
+```typescript
+// Archiving old chat messages every month
+async function archiveOldData() {
+  const oneYearAgo = Date.now() - 365 * 24 * 60 * 60 * 1000;
+
+  // Delete chat messages older than 1 year
+  await db.delete(chatMessages).where(lt(chatMessages.createdAt, oneYearAgo));
+
+  console.log("Archived old chat messages");
+}
+```
+
+---
+
+## 10. Backup & Recovery
+
+### 10.1 Automatic Backups
