@@ -8,6 +8,13 @@
       "when": 1769334766261,
       "tag": "0000_known_shinobi_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1769427458790,
+      "tag": "0001_lyrical_pestilence",
+      "breakpoints": true
     }
   ]
 }

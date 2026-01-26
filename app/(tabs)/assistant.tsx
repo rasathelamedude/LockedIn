@@ -1,6 +1,8 @@
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
+import { useAgentStore } from "@/store/useAgentStore";
+import { Message } from "@/types/agent";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -16,6 +18,36 @@ import {
 
 const Assistant = () => {
   const [isFocused, setIsFocused] = useState(false);
+  const messageRef = useRef<string>("");
+  const inputRef = useRef<TextInput>(null);
+
+  const { messages, loading, addMessage } = useAgentStore();
+
+  const handleSend = () => {
+    const message = messageRef.current.trim();
+
+    // Check if message is empty
+    if (message.length === 0) return;
+
+    // Construct user message
+    const userMessage: Message = {
+      role: "user",
+      content: message,
+      timestamp: Date.now() as number,
+    };
+
+    // Add user message to store
+    addMessage(userMessage);
+
+    // Clear input refs
+    messageRef.current = "";
+    if (inputRef.current) {
+      inputRef.current.clear();
+    }
+
+    // Dismiss keyboard
+    Keyboard.dismiss();
+  };
 
   return (
     <KeyboardAvoidingView
@@ -64,6 +96,30 @@ const Assistant = () => {
             )}
           </ScrollView>
 
+          {/* Chat Messages */}
+          {messages.length > 0 && (
+            <View style={styles.messagesList}>
+              {messages.map((msg, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.messageBubble,
+                    msg.role === "user"
+                      ? styles.userMessage
+                      : styles.agentMessage,
+                  ]}
+                >
+                  <Text style={styles.messageText}>{msg.content}</Text>
+                </View>
+              ))}
+              {loading && (
+                <View style={styles.loadingIndicator}>
+                  <Text style={styles.loadingText}>Thinking...</Text>
+                </View>
+              )}
+            </View>
+          )}
+
           {/* Chat Input - At bottom of KeyboardAvoidingView */}
           <View style={styles.inputWrapper}>
             <View style={styles.inputContainer}>
@@ -82,9 +138,19 @@ const Assistant = () => {
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 onSubmitEditing={Keyboard.dismiss}
+                ref={inputRef}
+                onChangeText={(text) => (messageRef.current = text)}
+                value={messageRef.current}
+                autoCorrect={true}
+                spellCheck={true}
               />
               {/* Send Button */}
-              <TouchableOpacity style={styles.sendButton} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={styles.sendButton}
+                activeOpacity={0.7}
+                onPress={handleSend}
+                disabled={loading}
+              >
                 <MaterialIcons name="arrow-upward" size={20} color="#ffffff" />
               </TouchableOpacity>
             </View>
@@ -187,6 +253,29 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.orange,
     justifyContent: "center",
     alignItems: "center",
+  },
+  messagesList: {
+    flex: 1,
+    gap: SPACING.md,
+  },
+  messageBubble: {
+    maxWidth: "80%",
+    padding: SPACING.md,
+    borderRadius: RADIUS.md,
+  },
+  userMessage: {
+    alignSelf: "flex-end",
+    backgroundColor: COLORS.orange,
+  },
+  agentMessage: {
+    alignSelf: "flex-start",
+    backgroundColor: COLORS.cardBg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  messageText: {
+    color: COLORS.text,
+    fontSize: 15,
   },
 });
 

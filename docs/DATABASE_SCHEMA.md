@@ -170,7 +170,7 @@ CREATE TABLE goals (
 export const milestones = sqliteTable("milestones", {
   id: text("id")
     .primaryKey()
-    .$default(() => crypt.randomUUID()),
+    .$defaultFn(() => crypt.randomUUID()),
   goalId: text("goal_id")
     .notNull()
     .references(() => goals.id, { onDelete: "cascade" }),
@@ -229,7 +229,7 @@ export const focusSessions = sqliteTable("focus_sessions", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  goalId: text("id")
+  goalId: text("goal_id")
     .notNull()
     .references(() => goals.id, { onDelete: "cascade" }),
   startTime: integer("start_time", { mode: "timestamp" }).notNull(),
@@ -348,7 +348,7 @@ export const chatMessage = sqliteTable("chat_messages", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
-  role: text("role", { enum: ["user", "assistnat"] }).notNull(),
+  role: text("role", { enum: ["user", "assistant"] }).notNull(),
   content: text("content").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" })
     .notNull()

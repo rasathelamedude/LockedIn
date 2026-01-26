@@ -1,6 +1,6 @@
 import CustomGoal from "@/components/CustomGoal";
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
-import { databaseInit, getAllGoals } from "@/services/database";
+import { runMigrations } from "@/database/migrate";
 import { Goal } from "@/types/goal";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useFocusEffect } from "@react-navigation/native";
@@ -18,10 +18,15 @@ import {
 const Home = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [todayHours, setTodayHours] = useState(4);
+  const [dbReady, setDbReady] = useState(false);
   const dailyHoursGoal = 8;
 
   useEffect(() => {
-    databaseInit();
+    runMigrations()
+      .then(() => setDbReady(true))
+      .catch((error) => {
+        console.error("Failed to run migrations:", error);
+      });
   }, []);
 
   // Fetch goals on screen focus
@@ -29,15 +34,14 @@ const Home = () => {
     useCallback(() => {
       const loadGoals = async () => {
         try {
-          const goals: Goal[] = await getAllGoals();
-          setGoals(goals);
+          console.log("Getting all goals");
         } catch (error) {
           console.error("Error fetching goals: ", error);
         }
       };
 
       loadGoals();
-    }, [])
+    }, []),
   );
 
   return (

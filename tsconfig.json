@@ -2,10 +2,14 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     },
     "target": "es2022",
-    "lib": ["es2022"],
+    "lib": [
+      "es2022"
+    ],
     "module": "esnext",
     "moduleResolution": "bundler",
     "esModuleInterop": true,
@@ -14,14 +18,20 @@
     "isolatedModules": true,
     "jsx": "react-native"
   },
-  "exclude": ["node_modules", "api"],
+  "exclude": [
+    "node_modules",
+    "api"
+  ],
   "include": [
     "**/*.ts",
     "**/*.tsx",
+    "**/*.sql",
+    "**/*.json",
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "backend/src/index.ts",
     "backend/prisma.config.js",
     "api/chat.js"
-  ]
+  ],
+  "extends": "expo/tsconfig.base"
 }

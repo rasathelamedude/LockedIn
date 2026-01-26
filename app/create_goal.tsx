@@ -1,5 +1,4 @@
 import { COLORS, PRESET_COLORS, RADIUS, SPACING } from "@/constants/styles";
-import { createGoal } from "@/services/database";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -20,37 +19,7 @@ const CreateGoalPage = () => {
   const [selectedColor, setSelectedColor] = useState("#f59e0b");
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      alert("Please enter a title for your goal.");
-      return;
-    }
-
-    if (
-      !daysFromNow ||
-      isNaN(Number(daysFromNow)) ||
-      Number(daysFromNow) <= 0
-    ) {
-      alert("Please enter a valid number of days.");
-      return;
-    }
-
-    try {
-      const deadline = new Date();
-      deadline.setDate(deadline.getDate() + Number(daysFromNow));
-
-      const goal = await createGoal({
-        title,
-        description,
-        deadline: deadline.toISOString(),
-        timeLogged: 0,
-        color: selectedColor,
-      });
-
-      alert("Goal created successfully!");
-      router.back();
-    } catch (error) {
-      alert("Error creating goal: " + error);
-    }
+    console.log("Goal created")
   };
 
   return (

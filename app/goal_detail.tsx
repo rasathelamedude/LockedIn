@@ -1,6 +1,5 @@
 import PomodoroTimer from "@/components/PomodoroTimer";
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
-import { getGoalById } from "@/services/database";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -30,15 +29,14 @@ const GoalDetail = () => {
     useCallback(() => {
       const fetchGoal = async () => {
         try {
-          const goal = await getGoalById(Number(id));
-          setGoal(goal as Goal);
+          console.log("Got goal by id")
         } catch (error) {
           console.error("Error fetching goal: ", error);
         }
       };
 
       fetchGoal();
-    }, [id])
+    }, []),
   );
 
   if (!goal) {
@@ -53,7 +51,7 @@ const GoalDetail = () => {
   const deadlineDate = new Date(goal.deadline);
   const today = new Date();
   const daysLeft = Math.ceil(
-    (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
   );
 
   // Example milestones
