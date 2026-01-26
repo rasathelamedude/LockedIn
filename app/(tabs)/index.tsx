@@ -1,12 +1,11 @@
 import CustomGoal from "@/components/CustomGoal";
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
-import { runMigrations } from "@/database/migrate";
-import { Goal } from "@/types/goal";
+import { getAllActiveGoals, Goal } from "@/database/queries/goals";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -18,23 +17,16 @@ import {
 const Home = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [todayHours, setTodayHours] = useState(4);
-  const [dbReady, setDbReady] = useState(false);
   const dailyHoursGoal = 8;
-
-  useEffect(() => {
-    runMigrations()
-      .then(() => setDbReady(true))
-      .catch((error) => {
-        console.error("Failed to run migrations:", error);
-      });
-  }, []);
 
   // Fetch goals on screen focus
   useFocusEffect(
     useCallback(() => {
       const loadGoals = async () => {
         try {
-          console.log("Getting all goals");
+          const activeGoals = await getAllActiveGoals();
+          console.log("Fetched active goals: ", activeGoals);
+          setGoals(activeGoals);
         } catch (error) {
           console.error("Error fetching goals: ", error);
         }
