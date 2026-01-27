@@ -4,26 +4,26 @@
 
 This document describes the technical architecture of **LockedIn**, a cross-platform mobile application for goal tracking and AI-powered productivity optimization.
 
-**Last Updated:** January 24th 2026
-**Version:** 1.0
+**Last Updated:** January 27th 2026
+**Version:** 1.1
 **Author:** Rasyar Safin Mustafa
 
 ---
 
 ## Table of Contents
 
-1. [High-Level Architecture](#high-level-architecture)
-2. [Technology Stack](#technology-stack)
-3. [System Components](#system-components)
-4. [Data Flow Architecture](#data-flow-architecture)
-5. [Database Design](#database-design)
-6. [State Management](#state-management)
-7. [API Architecture](#api-architecture)
-8. [Security Architecture](#security-architecture)
-9. [Error Handling](#error-handling)
-10. [Deployment Architecture](#deployment-architecture)
-11. [Performance Considerations](#performance-considerations)
-12. [Trade-offs & Constraints](#trade-offs--constraints)
+1. [High-Level Architecture](#1-high-level-architecture)
+2. [Technology Stack](#2-technology-stack)
+3. [System Components](#3-system-components)
+4. [Data Flow Architecture](#4-data-flow-architecture)
+5. [Database Design](#5-database-design)
+6. [State Management](#6-state-management)
+7. [API Architecture](#7-api-architecture)
+8. [Security Architecture](#8-security-architecture)
+9. [Error Handling](#9-error-handling)
+10. [Deployment Architecture](#10-deployment-architecture)
+11. [Performance Considerations](#11-performance-considerations)
+12. [Trade-offs & Constraints](#12-trade-offs--constraints)
 
 ---
 

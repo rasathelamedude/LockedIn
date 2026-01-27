@@ -7,18 +7,24 @@ This document describes the SQLite database schema for **LockedIn**, including t
 **Database Engine:** SQLite 3.43+
 **ORM:** Drizzle ORM
 **Location:** Local device storage (`lockedin.db`)
-**Version:** 1.0
+**Version:** 1.1
 
 ---
 
 ## Table of Contents
 
-1. [Schema Overview](#schema-overview)
-2. [Table Definitions](#table-definitions)
-3. [Relationships](#relationships)
-4. [Indexes](#indexes)
-5. [Query Patterns](#query-patterns)
-6. [Data Integrity Rules](#data-integrity-rules)
+1. [Schema Overview](#1-schema-overview)
+2. [Table Definitions](#2-table-deinitions)
+3. [Relationships](#3-relationships)
+4. [Indexes](#4-indexes)
+5. [Query Patterns](#5-query-patterns)
+6. [Data Integrity Rules](#6-data-integrity-rules)
+7. [Efficiency Calculation Formula](#7-efficiency-calculation-formula)
+8. [File Structure](#8-file-structure)
+9. [Storage Estimation](#9-storage-estimation)
+10. [Backup & Recovery](#10-backup--recovery)
+11. [Testing Strategy](#11-testing-strategy)
+12. [Disaster Recovery](#12-disaster-recovery)
 
 ---
 
@@ -728,6 +734,7 @@ db/
 └── queries/               # Reusable query functions
     ├── goals.ts
     ├── sessions.ts
+    ├── milestones.ts
     └── analytics.ts
 ```
 
@@ -967,5 +974,5 @@ async function recoverDatabase() {
 ## Document Version
 
 - **Version:** 1.0
-- **Last Updated:** January 25, 2026
+- **Last Updated:** January 27, 2026
 - **Author:** Rasyar Safin Mustafa
