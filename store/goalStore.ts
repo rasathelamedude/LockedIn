@@ -8,55 +8,103 @@ import {
 } from "@/database/queries/goals";
 import { create } from "zustand";
 
-export const useGoalStore = create((set, get) => ({
+interface GoalStore {
+  goals: Goal[];
+  loading: boolean;
+  error: string | null;
+
+  loadGoals: () => Promise<void>;
+  getGoalWithId: (goalId: string) => Promise<Goal | null>;
+  refreshGoals: () => Promise<void>;
+  addGoal: (goal: Goal) => Promise<void>;
+  removeGoal: (goalId: string) => Promise<void>;
+  editGoal: (goalId: string, data: Partial<Goal>) => Promise<void>;
+  clearError: () => void;
+}
+
+export const useGoalStore = create<GoalStore>((set, get) => ({
   goals: [] as Goal[],
   loading: false,
+  error: null,
+  clearError: () => set({ error: null }),
 
-  setGoals: (goals: Goal[]) => set({ goals }),
-  setLoading: (loading: boolean) => set({ loading }),
-
-  getGoals: async () => {
-    set({ loading: true });
-    const goals = await getAllActiveGoals();
-    set({ goals, loading: false });
+  loadGoals: async () => {
+    set({ loading: true, error: null });
+    try {
+      const goals = await getAllActiveGoals();
+      set({ goals, loading: false });
+    } catch (error) {
+      console.error("Error occured while loading goals");
+      set({ error: (error as Error).message, loading: false });
+    }
   },
 
-  getGoal: async (goalId: string) => {
-    set({ loading: true });
-    const goal = await getGoalById(goalId);
-    set({ loading: false });
-    return goal;
+  getGoalWithId: async (goalId: string): Promise<Goal | null> => {
+    set({ loading: true, error: null });
+
+    try {
+      const goal = await getGoalById(goalId);
+      set({ loading: false });
+      return goal;
+    } catch (error) {
+      console.error(`Error occured while fetching goal with id: ${goalId}`);
+      set({ error: (error as Error).message, loading: false });
+      return null;
+    }
   },
 
-  refreshGoals: async () => {
-    set({ loading: true });
-    const goals = await getAllActiveGoals();
-    set({ goals, loading: false });
+  refreshGoals: async (): Promise<void> => {
+    const { loadGoals } = get();
+    await loadGoals();
   },
 
-  addGoal: (goal: Goal) => {
+  addGoal: async (goal: Goal): Promise<void> => {
     set({ loading: true });
-    const newGoal = createGoal(goal);
-    set((state: any) => ({ goals: [newGoal, ...state.goals] }));
+
+    try {
+      const newGoal = await createGoal(goal);
+      set((state: { goals: Goal[]; loading: boolean }) => ({
+        goals: [newGoal, ...state.goals],
+        loading: false,
+      }));
+    } catch (error) {
+      console.error(`Error occured while creating a new goal`);
+      set({ error: (error as Error).message, loading: false });
+      throw error;
+    }
   },
 
-  removeGoal: (goalId: string) => {
-    set({ loading: true });
-    deleteGoal(goalId);
-    set((state: any) => ({
-      goals: state.goals.filter((goal: Goal) => goal.id !== goalId),
-      loading: false,
-    }));
+  removeGoal: async (goalId: string): Promise<void> => {
+    set({ loading: true, error: null });
+
+    try {
+      await deleteGoal(goalId);
+      set((state: { goals: Goal[]; loading: boolean }) => ({
+        goals: state.goals.filter((goal: Goal) => goal.id !== goalId),
+        loading: false,
+      }));
+    } catch (error) {
+      console.error(`Error occured while removing goal with id: ${goalId}`);
+      set({ error: (error as Error).message, loading: false });
+      throw error;
+    }
   },
 
-  editGoal: (goalId: string, data: Partial<Goal>) => {
-    set({ loading: true });
-    updateGoal(goalId, data);
-    set((state: any) => ({
-      goals: state.goals.map((goal: Goal) =>
-        goal.id === goalId ? { ...goal, ...data } : goal,
-      ),
-      loading: false,
-    }));
+  editGoal: async (goalId: string, data: Partial<Goal>) => {
+    set({ loading: true, error: null });
+
+    try {
+      await updateGoal(goalId, data);
+      set((state: { goals: Goal[]; loading: boolean }) => ({
+        goals: state.goals.map((goal: Goal) =>
+          goal.id === goalId ? { ...goal, ...data } : goal,
+        ),
+        loading: false,
+      }));
+    } catch (error) {
+      console.error(`Error occured while updating goal with id: ${goalId}`);
+      set({ error: (error as Error).message, loading: false });
+      throw error;
+    }
   },
 }));

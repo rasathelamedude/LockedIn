@@ -1,6 +1,7 @@
 import CustomGoal from "@/components/CustomGoal";
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
-import { getAllActiveGoals, Goal } from "@/database/queries/goals";
+import { Goal } from "@/database/queries/goals";
+import { useGoalStore } from "@/store/goalStore";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,25 +16,17 @@ import {
 } from "react-native";
 
 const Home = () => {
-  const [goals, setGoals] = useState<Goal[]>([]);
   const [todayHours, setTodayHours] = useState(4);
   const dailyHoursGoal = 8;
+
+  const loadGoals = useGoalStore((state) => state.loadGoals);
+  const goals = useGoalStore((state) => state.goals);
 
   // Fetch goals on screen focus
   useFocusEffect(
     useCallback(() => {
-      const loadGoals = async () => {
-        try {
-          const activeGoals = await getAllActiveGoals();
-          console.log("Fetched active goals: ", activeGoals);
-          setGoals(activeGoals);
-        } catch (error) {
-          console.error("Error fetching goals: ", error);
-        }
-      };
-
       loadGoals();
-    }, []),
+    }, [loadGoals]),
   );
 
   return (
@@ -101,8 +94,8 @@ const Home = () => {
               description={goal.description || ""}
               deadline={goal.deadline}
               efficiency={goal.efficiency}
-              timeLogged={goal.timeLogged}
-              gradientColors={goal.gradientColors}
+              timeLogged={goal.hoursLogged}
+              gradientColors={goal.color}
               createdAt={goal.createdAt}
               updatedAt={goal.updatedAt || ""}
             />

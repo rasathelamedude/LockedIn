@@ -1,9 +1,12 @@
 import { COLORS, PRESET_COLORS, RADIUS, SPACING } from "@/constants/styles";
+import { Goal } from "@/database/queries/goals";
+import { useGoalStore } from "@/store/goalStore";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,14 +16,60 @@ import {
 } from "react-native";
 
 const CreateGoalPage = () => {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [daysFromNow, setDaysFromNow] = useState("");
-  const [selectedColor, setSelectedColor] = useState("#f59e0b");
+  const [goal, setGoal] = useState<Partial<Goal>>({
+    title: "",
+    description: "",
+    targetHours: 0,
+    color: PRESET_COLORS[0],
+  });
 
-  const handleSubmit = async () => {
-    console.log("Goal created")
+  const addGoal = useGoalStore((state) => state.addGoal);
+  const loading = useGoalStore((state) => state.loading);
+  const error = useGoalStore((state) => state.error);
+
+  const handleSubmit = async (goal: Goal) => {
+    if (!goal.title.trim()) {
+      Alert.alert("Please enter a goal title.");
+      return;
+    }
+
+    if (!goal.targetHours || goal.targetHours <= 0) {
+      Alert.alert("Please enter the number of hours for the goal.");
+      return;
+    }
+
+    if (isNaN(Number(goal.targetHours)) || Number(goal.targetHours) <= 0) {
+      Alert.alert("Please enter a valid positive number for target hours.");
+      return;
+    }
+
+    try {
+      await addGoal(goal);
+      Alert.alert("Goal created successfully!");
+    } catch (error) {
+      Alert.alert("Error creating goal. Please try again.");
+      console.error("Error creating goal:", error);
+      return;
+    }
+
+    router.back();
   };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <Text style={{ color: COLORS.red }}>Error: {error}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -48,8 +97,8 @@ const CreateGoalPage = () => {
             placeholder="e.g., Complete DevOps Course"
             placeholderTextColor={COLORS.textSecondary}
             returnKeyType="done"
-            value={title}
-            onChangeText={setTitle}
+            value={goal.title}
+            onChangeText={(text) => setGoal({ ...goal, title: text })}
           />
         </View>
 
@@ -60,8 +109,8 @@ const CreateGoalPage = () => {
             style={[styles.input, styles.textArea]}
             placeholder="Add more details about your goal..."
             placeholderTextColor={COLORS.textSecondary}
-            value={description}
-            onChangeText={setDescription}
+            value={goal.description || ""}
+            onChangeText={(text) => setGoal({ ...goal, description: text })}
             multiline
             numberOfLines={3}
           />
@@ -74,8 +123,10 @@ const CreateGoalPage = () => {
             style={styles.input}
             placeholder="e.g., 30"
             placeholderTextColor={COLORS.textSecondary}
-            value={daysFromNow}
-            onChangeText={setDaysFromNow}
+            value={goal.hoursLogged ? goal.hoursLogged.toString() : ""}
+            onChangeText={(hours) =>
+              setGoal({ ...goal, hoursLogged: Number(hours) })
+            }
             keyboardType="numeric"
           />
         </View>
@@ -87,16 +138,16 @@ const CreateGoalPage = () => {
             {PRESET_COLORS.map((color) => (
               <TouchableOpacity
                 key={color}
-                onPress={() => setSelectedColor(color)}
+                onPress={() => setGoal({ ...goal, color })}
                 style={[
                   styles.colorOption,
-                  selectedColor === color && styles.colorOptionSelected,
+                  goal.color === color && styles.colorOptionSelected,
                 ]}
               >
                 <View
                   style={[styles.colorCircle, { backgroundColor: color }]}
                 />
-                {selectedColor === color && (
+                {goal.color === color && (
                   <MaterialIcons
                     name="check"
                     size={20}
@@ -113,11 +164,24 @@ const CreateGoalPage = () => {
       {/* Submit Button */}
       <TouchableOpacity
         style={styles.submitButton}
-        onPress={handleSubmit}
+        onPress={() =>
+          handleSubmit({
+            title: goal.title || "",
+            description: goal.description || null,
+            deadline: goal.deadline || null,
+            color: goal.color || PRESET_COLORS[0],
+            efficiency: goal.efficiency || null,
+            hoursLogged: 0,
+            targetHours: goal.targetHours || 0,
+          } as Goal)
+        }
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={[selectedColor, selectedColor]}
+          colors={[
+            goal.color || PRESET_COLORS[0],
+            goal.color || PRESET_COLORS[0],
+          ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.submitGradient}
