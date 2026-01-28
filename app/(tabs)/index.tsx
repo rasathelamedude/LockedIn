@@ -1,5 +1,6 @@
 import CustomGoal from "@/components/CustomGoal";
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
+import { getTodayFocusHours } from "@/database/queries/analytics";
 import { Goal } from "@/database/queries/goals";
 import { useGoalStore } from "@/store/goalStore";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -16,7 +17,7 @@ import {
 } from "react-native";
 
 const Home = () => {
-  const [todayHours, setTodayHours] = useState(4);
+  const [todayHours, setTodayHours] = useState(0);
   const dailyHoursGoal = 8;
 
   const loadGoals = useGoalStore((state) => state.loadGoals);
@@ -28,6 +29,18 @@ const Home = () => {
     useCallback(() => {
       loadGoals();
     }, [loadGoals]),
+  );
+
+  // Fetch today's focus hours
+  useFocusEffect(
+    useCallback(() => {
+      const fetchTodayHours = async () => {
+        const hours = await getTodayFocusHours();
+        setTodayHours(hours);
+      };
+
+      fetchTodayHours();
+    }, []),
   );
 
   if (loading && goals.length === 0) {

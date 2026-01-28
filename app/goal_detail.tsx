@@ -7,6 +7,7 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,6 +27,7 @@ const GoalDetail = () => {
   const getMilestonesWithGoalId = useMilestoneStore(
     (state) => state.getMilestonesWithGoalId,
   );
+  const toggleMilestone = useMilestoneStore((state) => state.toggleMilestone);
 
   useEffect(() => {
     const fetchMilestones = async () => {
@@ -72,8 +74,10 @@ const GoalDetail = () => {
 
   // Calculate days left
   const daysLeft = goal?.deadline
-    ? Math.ceil(new Date(goal.deadline).getTime() - new Date().getTime()) /
-      (1000 * 60 * 60 * 24)
+    ? Math.ceil(
+        (new Date(goal.deadline).getTime() - new Date().getTime()) /
+          (1000 * 60 * 60 * 24),
+      )
     : null;
 
   return (
@@ -151,8 +155,19 @@ const GoalDetail = () => {
 
           <View style={styles.milestonesList}>
             {milestones.map((milestone) => (
-              <View
+              <TouchableOpacity
                 key={milestone.id}
+                onPress={async () => {
+                  if (!milestone.completed) {
+                    try {
+                      await toggleMilestone(milestone.id);
+                    } catch (error) {
+                      Alert.alert("Error", "Could not complete milestone");
+                    }
+                  }
+                }}
+                disabled={milestone.completed}
+                activeOpacity={milestone.completed ? 1 : 0.7}
                 style={[
                   styles.milestoneCard,
                   milestone.completed && styles.milestoneCompleted,
@@ -176,7 +191,7 @@ const GoalDetail = () => {
                 >
                   {milestone.title}
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
