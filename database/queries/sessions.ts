@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "../client";
 import { focusSessions } from "../schema";
+import { updateTodayProgress } from "./analytics";
 import { recalculateEfficiency, updateHoursLogged } from "./goals";
 
 export type Session = typeof focusSessions.$inferSelect;
@@ -82,6 +83,9 @@ export const completeSession = async (
 
   // 3. Recalculate the goal's efficiency
   await recalculateEfficiency(session.goalId);
+
+  // 4. Update today's progress
+  await updateTodayProgress(session.goalId, durationMinutes);
 };
 
 export const cancelSession = async (sessionId: string): Promise<void> => {
