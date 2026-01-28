@@ -1,66 +1,71 @@
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
+import { useTimerStore } from "@/store/timerStore";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useLocalSearchParams } from "expo-router";
+import React, { useEffect, useRef } from "react";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface PomodoroTimerProps {
   gradientColors: [string, string];
 }
 
 const PomodoroTimer = ({ gradientColors }: PomodoroTimerProps) => {
-  const [secondsLeft, setSecondsLeft] = useState(25 * 60);
-  const [isRunning, setIsRunning] = useState(false);
+  const { goalId } = useLocalSearchParams() as { goalId: string };
+
+  const isRunning = useTimerStore((state) => state.isRunning);
+  const timeRemaining = useTimerStore((state) => state.timeRemaining);
+  const loading = useTimerStore((state) => state.loading);
+
+  const startTimer = useTimerStore((state) => state.startTimer);
+  const completeTimer = useTimerStore((state) => state.completeTimer);
+  const cancelTimer = useTimerStore((state) => state.cancelTimer);
+
   const intervalRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    // Clear any existing interval
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-    }
-
-    // Start new interval if running
-    if (isRunning && secondsLeft > 0) {
-      intervalRef.current = setInterval(() => {
-        setSecondsLeft((prev) => {
-          if (prev <= 1) {
-            setIsRunning(false); // Auto-stop when timer reaches 0
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-
-    // Cleanup on unmount or when dependencies change
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+  const toggleTimer = async () => {
+    if (!isRunning) {
+      try {
+        await startTimer(goalId);
+      } catch (error) {
+        Alert.alert("Error starting timer. Please try again.");
       }
-    };
-  }, [isRunning, secondsLeft]);
-
-  const toggleTimer = () => {
-    setIsRunning(!isRunning);
-  };
-
-  const resetTimer = () => {
-    setIsRunning(false);
-    setSecondsLeft(25 * 60);
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
     }
   };
+
+  const handleReset = async () => {
+    Alert.alert(
+      "Cancel Session?",
+      "This will discard your progress for this session.",
+      [
+        { text: "Keep Going", style: "cancel" },
+        {
+          text: "Cancel Session",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await cancelTimer();
+            } catch (error) {
+              Alert.alert("Error", "Could not cancel session");
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  useEffect(() => {
+    if (isRunning && timeRemaining === 0) {
+      completeTimer();
+    }
+  }, [completeTimer, isRunning, timeRemaining]);
 
   // Format time as MM:SS
-  const minutes = Math.floor(secondsLeft / 60);
-  const seconds = secondsLeft % 60;
-  const timeDisplay = `${String(minutes).padStart(2, "0")}:${String(
-    seconds
-  ).padStart(2, "0")}`;
-
-  // Determine if timer has been used
-  const hasStarted = secondsLeft !== 25 * 60;
+  const minutes = Math.floor(timeRemaining / 60);
+  const seconds = timeRemaining % 60;
+  const timeDisplay = `${minutes.toString().padStart(2, "0")}:${seconds
+    .toString()
+    .padStart(2, "0")}`;
 
   return (
     <View style={styles.timerCard}>
@@ -72,11 +77,12 @@ const PomodoroTimer = ({ gradientColors }: PomodoroTimerProps) => {
 
       {/* Button Container */}
       <View style={styles.buttonContainer}>
-        {/* Start/Pause Button */}
+        {/* Start Button */}
         <TouchableOpacity
           style={styles.button}
           onPress={toggleTimer}
           activeOpacity={0.8}
+          disabled={loading}
         >
           <LinearGradient
             colors={isRunning ? ["#374151", "#1f2937"] : gradientColors}
@@ -90,24 +96,22 @@ const PomodoroTimer = ({ gradientColors }: PomodoroTimerProps) => {
               color="#ffffff"
             />
             <Text style={styles.buttonText}>
-              {isRunning ? "PAUSE SESSION" : "START FOCUS"}
+              {isRunning ? "SESSION ACTIVE" : "START FOCUS"}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Reset Button - Only show if timer has been started */}
-        {hasStarted && (
+        {/* Cancel Button - Show when session is active */}
+        {isRunning && (
           <TouchableOpacity
             style={styles.resetButton}
-            onPress={resetTimer}
+            onPress={handleReset}
             activeOpacity={0.7}
           >
-            <MaterialIcons
-              name="refresh"
-              size={20}
-              color={COLORS.textSecondary}
-            />
-            <Text style={styles.resetText}>Reset</Text>
+            <MaterialIcons name="close" size={20} color={COLORS.red} />
+            <Text style={[styles.resetText, { color: COLORS.red }]}>
+              Cancel Session
+            </Text>
           </TouchableOpacity>
         )}
       </View>
