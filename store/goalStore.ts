@@ -1,5 +1,6 @@
 import {
   Goal,
+  NewGoal,
   createGoal,
   deleteGoal,
   getAllActiveGoals,
@@ -16,7 +17,7 @@ interface GoalStore {
   loadGoals: () => Promise<void>;
   getGoalWithId: (goalId: string) => Promise<Goal | null>;
   refreshGoals: () => Promise<void>;
-  addGoal: (goal: Goal) => Promise<void>;
+  addGoal: (goal: NewGoal) => Promise<void>;
   removeGoal: (goalId: string) => Promise<void>;
   editGoal: (goalId: string, data: Partial<Goal>) => Promise<void>;
   clearError: () => void;
@@ -58,7 +59,7 @@ export const useGoalStore = create<GoalStore>((set, get) => ({
     await loadGoals();
   },
 
-  addGoal: async (goal: Goal): Promise<void> => {
+  addGoal: async (goal: NewGoal): Promise<void> => {
     set({ loading: true });
 
     try {

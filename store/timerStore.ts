@@ -93,10 +93,11 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       }
 
       // Reduce time remaining
-      set({ timeRemaining: timeRemaining - 1 });
+      const newTimeRemaining = timeRemaining - 1;
+      set({ timeRemaining: newTimeRemaining });
 
       // Did the timer reach 0?
-      if (timeRemaining === 0) {
+      if (newTimeRemaining <= 0) {
         clearInterval(newTimerId);
         set({ timerId: null });
         get().completeTimer();

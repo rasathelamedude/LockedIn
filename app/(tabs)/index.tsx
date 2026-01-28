@@ -21,6 +21,7 @@ const Home = () => {
 
   const loadGoals = useGoalStore((state) => state.loadGoals);
   const goals = useGoalStore((state) => state.goals);
+  const loading = useGoalStore((state) => state.loading);
 
   // Fetch goals on screen focus
   useFocusEffect(
@@ -28,6 +29,14 @@ const Home = () => {
       loadGoals();
     }, [loadGoals]),
   );
+
+  if (loading && goals.length === 0) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -259,6 +268,16 @@ const styles = StyleSheet.create({
     height: "100%",
     justifyContent: "center",
     alignItems: "center",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: COLORS.textSecondary,
   },
 });
 

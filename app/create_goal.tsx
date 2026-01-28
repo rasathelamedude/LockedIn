@@ -116,6 +116,22 @@ const CreateGoalPage = () => {
           />
         </View>
 
+        {/* Target Hours Inputs */}
+        <View style={styles.fieldContainer}>
+          <Text style={styles.label}>Target Hours *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g., 50"
+            placeholderTextColor={COLORS.textSecondary}
+            value={goal.targetHours ? goal.targetHours.toString() : ""}
+            onChangeText={(text) => {
+              const hours = Number(text);
+              setGoal({ ...goal, targetHours: hours });
+            }}
+            keyboardType="numeric"
+          />
+        </View>
+
         {/* Days From Now */}
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>Deadline (Days from now) *</Text>
@@ -123,10 +139,13 @@ const CreateGoalPage = () => {
             style={styles.input}
             placeholder="e.g., 30"
             placeholderTextColor={COLORS.textSecondary}
-            value={goal.hoursLogged ? goal.hoursLogged.toString() : ""}
-            onChangeText={(hours) =>
-              setGoal({ ...goal, hoursLogged: Number(hours) })
-            }
+            value={goal.deadline ? goal.deadline.toString() : ""}
+            onChangeText={(days) => {
+              const daysNum = Number(days);
+              const deadline =
+                daysNum > 0 ? new Date(Date.now() + daysNum * 86400000) : null;
+              setGoal({ ...goal, deadline });
+            }}
             keyboardType="numeric"
           />
         </View>

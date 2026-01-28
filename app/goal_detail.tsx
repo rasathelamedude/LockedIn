@@ -1,8 +1,11 @@
 import PomodoroTimer from "@/components/PomodoroTimer";
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
+import { Goal } from "@/database/queries/goals";
+import { useGoalStore } from "@/store/goalStore";
+import { useMilestoneStore } from "@/store/milestoneStore";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -11,35 +14,47 @@ import {
   View,
 } from "react-native";
 
-interface Goal {
-  id: number;
-  title: string;
-  description: string | null;
-  deadline: string;
-  efficiency: number;
-  timeLogged: number;
-  color: string;
-}
-
 const GoalDetail = () => {
-  const { id } = useLocalSearchParams();
+  const { goalId } = useLocalSearchParams() as { goalId: string };
   const [goal, setGoal] = useState<Goal | null>(null);
+
+  const getGoalWithId = useGoalStore((state) => state.getGoalWithId);
+  const loading = useGoalStore((state) => state.loading);
+  const error = useGoalStore((state) => state.error);
+
+  const milestones = useMilestoneStore((state) => state.milestones);
+  const getMilestonesWithGoalId = useMilestoneStore(
+    (state) => state.getMilestonesWithGoalId,
+  );
+
+  useEffect(() => {
+    const fetchMilestones = async () => {
+      try {
+        await getMilestonesWithGoalId(goalId);
+      } catch (error) {
+        console.error(`Error fetching milestones for goal ${goalId}: ${error}`);
+      }
+    };
+
+    fetchMilestones();
+  }, [getMilestonesWithGoalId, goalId]);
 
   useFocusEffect(
     useCallback(() => {
       const fetchGoal = async () => {
         try {
-          console.log("Got goal by id")
+          const goalWithId = await getGoalWithId(goalId);
+          setGoal(goalWithId);
         } catch (error) {
           console.error("Error fetching goal: ", error);
         }
       };
 
       fetchGoal();
-    }, []),
+    }, [getGoalWithId, goalId]),
   );
 
-  if (!goal) {
+  if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading...</Text>
@@ -47,20 +62,19 @@ const GoalDetail = () => {
     );
   }
 
-  // Calculate days left
-  const deadlineDate = new Date(goal.deadline);
-  const today = new Date();
-  const daysLeft = Math.ceil(
-    (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
-  );
+  if (error) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Error loading goal.</Text>
+      </View>
+    );
+  }
 
-  // Example milestones
-  const milestones = [
-    { id: 1, text: "Complete Module 1", completed: true },
-    { id: 2, text: "Build practice project", completed: true },
-    { id: 3, text: "Complete Module 2", completed: false },
-    { id: 4, text: "Final assessment", completed: false },
-  ];
+  // Calculate days left
+  const daysLeft = goal?.deadline
+    ? Math.ceil(new Date(goal.deadline).getTime() - new Date().getTime()) /
+      (1000 * 60 * 60 * 24)
+    : null;
 
   return (
     <View style={styles.container}>
@@ -79,16 +93,16 @@ const GoalDetail = () => {
 
           <View style={styles.efficiencyBadge}>
             <Text style={styles.efficiencyText}>
-              {goal.efficiency}% Complete
+              {goal?.efficiency}% Complete
             </Text>
           </View>
         </View>
 
         {/* Goal Info Section */}
         <View style={styles.goalInfo}>
-          <Text style={styles.title}>{goal.title}</Text>
+          <Text style={styles.title}>{goal?.title}</Text>
           <Text style={styles.description}>
-            {goal.description || "No description provided"}
+            {goal?.description || "No description provided"}
           </Text>
 
           <View style={styles.metaInfo}>
@@ -99,7 +113,7 @@ const GoalDetail = () => {
                 color={COLORS.textSecondary}
               />
               <Text style={styles.metaText}>
-                {daysLeft > 0 ? `${daysLeft} days left` : "Overdue"}
+                {daysLeft !== null ? `${daysLeft} days left` : "No deadline"}
               </Text>
             </View>
             <View style={styles.metaItem}>
@@ -108,7 +122,9 @@ const GoalDetail = () => {
                 size={16}
                 color={COLORS.textSecondary}
               />
-              <Text style={styles.metaText}>{goal.timeLogged} hrs logged</Text>
+              <Text style={styles.metaText}>
+                {goal?.hoursLogged} hrs logged
+              </Text>
             </View>
             <View style={styles.metaItem}>
               <MaterialIcons
@@ -122,7 +138,9 @@ const GoalDetail = () => {
         </View>
 
         {/* Pomodoro Timer */}
-        <PomodoroTimer gradientColors={[goal.color, goal.color]} />
+        <PomodoroTimer
+          gradientColors={[goal?.color, goal?.color] as [string, string]}
+        />
 
         {/* Milestones Section */}
         <View style={styles.milestonesSection}>
@@ -156,7 +174,7 @@ const GoalDetail = () => {
                     milestone.completed && styles.milestoneTextCompleted,
                   ]}
                 >
-                  {milestone.text}
+                  {milestone.title}
                 </Text>
               </View>
             ))}
