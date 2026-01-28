@@ -104,7 +104,7 @@ export const updateTodayProgress = async (
   // If yesterday had progress then add 1 to streak count, otherwise set it to 0
   const newStreakCount = yesterdayProgress
     ? yesterdayProgress.streakCount + 1
-    : 0;
+    : 1;
 
   // Update
   await db

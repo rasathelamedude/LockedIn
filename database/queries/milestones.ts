@@ -47,7 +47,6 @@ export const updateMilestoneOrder = async (
 
 export const toggleMilestoneCompletion = async (
   milestoneId: string,
-  completed: boolean,
 ): Promise<void> => {
   const milestone = await db
     .select()
