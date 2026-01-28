@@ -36,9 +36,27 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "FOCUS",
+          title: "Home",
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="home" size={26} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="timer"
+        options={{
+          title: "Timer",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="timer" size={26} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="analytics"
+        options={{
+          title: "Analytics",
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="analytics" size={26} color={color} />
           ),
         }}
       />

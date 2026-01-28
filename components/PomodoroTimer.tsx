@@ -3,7 +3,7 @@ import { useTimerStore } from "@/store/timerStore";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface PomodoroTimerProps {
@@ -20,8 +20,8 @@ const PomodoroTimer = ({ gradientColors }: PomodoroTimerProps) => {
   const startTimer = useTimerStore((state) => state.startTimer);
   const completeTimer = useTimerStore((state) => state.completeTimer);
   const cancelTimer = useTimerStore((state) => state.cancelTimer);
-
-  const intervalRef = useRef<number | null>(null);
+  const tick = useTimerStore((state) => state.tick);
+  const stopTick = useTimerStore((state) => state.stopTick);
 
   const toggleTimer = async () => {
     if (!isRunning) {
@@ -30,6 +30,8 @@ const PomodoroTimer = ({ gradientColors }: PomodoroTimerProps) => {
       } catch (error) {
         Alert.alert("Error starting timer. Please try again.");
       }
+    } else {
+      stopTick();
     }
   };
 
@@ -59,6 +61,12 @@ const PomodoroTimer = ({ gradientColors }: PomodoroTimerProps) => {
       completeTimer();
     }
   }, [completeTimer, isRunning, timeRemaining]);
+
+  useEffect(() => {
+    if (isRunning) {
+      tick();
+    }
+  }, [isRunning, tick]);
 
   // Format time as MM:SS
   const minutes = Math.floor(timeRemaining / 60);

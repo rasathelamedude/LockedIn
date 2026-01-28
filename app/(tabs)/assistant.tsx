@@ -1,6 +1,5 @@
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
-import { useAgentStore } from "@/store/useAgentStore";
-import { Message } from "@/types/agent";
+import { Message, useAssistantStore } from "@/store/assistantStore";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import React, { useRef, useState } from "react";
 import {
@@ -21,7 +20,7 @@ const Assistant = () => {
   const messageRef = useRef<string>("");
   const inputRef = useRef<TextInput>(null);
 
-  const { messages, loading, addMessage } = useAgentStore();
+  const { messages, loading, addMessage } = useAssistantStore();
 
   const handleSend = () => {
     const message = messageRef.current.trim();
@@ -94,31 +93,31 @@ const Assistant = () => {
                 </Text>
               </View>
             )}
-          </ScrollView>
 
-          {/* Chat Messages */}
-          {messages.length > 0 && (
-            <View style={styles.messagesList}>
-              {messages.map((msg, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.messageBubble,
-                    msg.role === "user"
-                      ? styles.userMessage
-                      : styles.agentMessage,
-                  ]}
-                >
-                  <Text style={styles.messageText}>{msg.content}</Text>
-                </View>
-              ))}
-              {loading && (
-                <View style={styles.loadingIndicator}>
-                  <Text style={styles.loadingText}>Thinking...</Text>
-                </View>
-              )}
-            </View>
-          )}
+            {/* Chat Messages */}
+            {messages && messages.length > 0 && (
+              <View style={styles.messagesList}>
+                {messages.map((msg, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.messageBubble,
+                      msg.role === "user"
+                        ? styles.userMessage
+                        : styles.agentMessage,
+                    ]}
+                  >
+                    <Text style={styles.messageText}>{msg.content}</Text>
+                  </View>
+                ))}
+                {loading && (
+                  <View style={styles.loadingIndicator}>
+                    <Text style={styles.loadingText}>Thinking...</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </ScrollView>
 
           {/* Chat Input - At bottom of KeyboardAvoidingView */}
           <View style={styles.inputWrapper}>
@@ -276,6 +275,15 @@ const styles = StyleSheet.create({
   messageText: {
     color: COLORS.text,
     fontSize: 15,
+  },
+  loadingIndicator: {
+    padding: SPACING.md,
+    alignItems: "center",
+  },
+  loadingText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    fontStyle: "italic",
   },
 });
 

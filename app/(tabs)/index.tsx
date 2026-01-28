@@ -27,20 +27,14 @@ const Home = () => {
   // Fetch goals on screen focus
   useFocusEffect(
     useCallback(() => {
-      loadGoals();
-    }, [loadGoals]),
-  );
-
-  // Fetch today's focus hours
-  useFocusEffect(
-    useCallback(() => {
-      const fetchTodayHours = async () => {
+      const fetchData = async () => {
+        await loadGoals();
         const hours = await getTodayFocusHours();
         setTodayHours(hours);
       };
 
-      fetchTodayHours();
-    }, []),
+      fetchData();
+    }, [loadGoals]),
   );
 
   if (loading && goals.length === 0) {
