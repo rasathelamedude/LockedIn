@@ -5,7 +5,7 @@ import { useGoalStore } from "@/store/goalStore";
 import { useMilestoneStore } from "@/store/milestoneStore";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -27,34 +27,54 @@ const GoalDetail = () => {
   const getMilestonesWithGoalId = useMilestoneStore(
     (state) => state.getMilestonesWithGoalId,
   );
+  const createMilestone = useMilestoneStore((state) => state.createMilestone);
   const toggleMilestone = useMilestoneStore((state) => state.toggleMilestone);
 
-  useEffect(() => {
-    const fetchMilestones = async () => {
-      try {
-        await getMilestonesWithGoalId(id);
-      } catch (error) {
-        console.error(`Error fetching milestones for goal ${id}: ${error}`);
-      }
-    };
+  const fetchData = useCallback(async () => {
+    try {
+      const [goalData] = await Promise.all([
+        getGoalWithId(id),
+        getMilestonesWithGoalId(id),
+      ]);
 
-    fetchMilestones();
-  }, [getMilestonesWithGoalId, id]);
+      setGoal(goalData);
+    } catch (error) {
+      console.error("Error fetching data: ", error);
+    }
+  }, [getGoalWithId, getMilestonesWithGoalId, id]);
 
   useFocusEffect(
     useCallback(() => {
-      const fetchGoal = async () => {
-        try {
-          const goalWithId = await getGoalWithId(id);
-          setGoal(goalWithId);
-        } catch (error) {
-          console.error("Error fetching goal: ", error);
-        }
-      };
-
-      fetchGoal();
-    }, [getGoalWithId, id]),
+      fetchData();
+    }, [fetchData]),
   );
+
+  const handleAddMilestone = () => {
+    Alert.prompt(
+      "New Milestone",
+      "Enter milestone title",
+      async (text) => {
+        if (!text || !text.trim()) return;
+
+        try {
+          const nextOrderIndex = milestones.length;
+          await createMilestone({
+            goalId: id,
+            title: text.trim(),
+            orderIndex: nextOrderIndex,
+          });
+
+          // Refresh milestones
+          await getMilestonesWithGoalId(id);
+          Alert.alert("Success", "Milestone created!");
+        } catch (error) {
+          Alert.alert("Error", "Could not create milestone");
+          console.error(error);
+        }
+      },
+      "plain-text",
+    );
+  };
 
   if (loading) {
     return (
@@ -185,17 +205,21 @@ const GoalDetail = () => {
         />
 
         {/* Milestones Section */}
-        {milestones.length > 0 && (
-          <View style={styles.milestonesSection}>
-            <View style={styles.milestonesHeader}>
+        <View style={styles.milestonesSection}>
+          <View style={styles.milestonesHeader}>
+            <View style={styles.milestoneTitleRow}>
               <MaterialIcons name="flag" size={20} color={COLORS.text} />
               <Text style={styles.milestonesTitle}>Milestones</Text>
-              <Text style={styles.milestoneCount}>
-                {milestones.filter((m) => m.completed).length} /{" "}
-                {milestones.length}
-              </Text>
             </View>
+            <TouchableOpacity
+              style={styles.addMilestoneButton}
+              onPress={handleAddMilestone}
+            >
+              <MaterialIcons name="add" size={20} color={COLORS.orange} />
+            </TouchableOpacity>
+          </View>
 
+          {milestones.length > 0 ? (
             <View style={styles.milestonesList}>
               {milestones.map((milestone) => (
                 <TouchableOpacity
@@ -204,6 +228,7 @@ const GoalDetail = () => {
                     if (!milestone.completed) {
                       try {
                         await toggleMilestone(milestone.id);
+                        await getMilestonesWithGoalId(id);
                       } catch (error) {
                         Alert.alert("Error", "Could not complete milestone");
                       }
@@ -216,7 +241,6 @@ const GoalDetail = () => {
                     milestone.completed && styles.milestoneCompleted,
                   ]}
                 >
-                  {/* Checkbox */}
                   {milestone.completed ? (
                     <View style={styles.checkboxCompleted}>
                       <MaterialIcons name="check" size={16} color="#ffffff" />
@@ -225,7 +249,6 @@ const GoalDetail = () => {
                     <View style={styles.checkboxEmpty} />
                   )}
 
-                  {/* Milestone Text */}
                   <Text
                     style={[
                       styles.milestoneText,
@@ -237,8 +260,15 @@ const GoalDetail = () => {
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
-        )}
+          ) : (
+            <View style={styles.emptyMilestones}>
+              <MaterialIcons name="flag" size={40} color="#3f3f3f" />
+              <Text style={styles.emptyMilestonesText}>
+                No milestones yet. Tap + to add one.
+              </Text>
+            </View>
+          )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -251,7 +281,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: SPACING.lg,
-    paddingBottom: SPACING.xl,
+    paddingBottom: SPACING.xl * 2,
   },
   loadingContainer: {
     flex: 1,
@@ -321,20 +351,29 @@ const styles = StyleSheet.create({
   },
   milestonesHeader: {
     flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SPACING.md,
+  },
+  milestoneTitleRow: {
+    flexDirection: "row",
     alignItems: "center",
     gap: SPACING.xs,
-    marginBottom: SPACING.md,
   },
   milestonesTitle: {
     fontSize: 20,
     fontWeight: "bold",
     color: COLORS.text,
-    flex: 1,
   },
-  milestoneCount: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    fontWeight: "600",
+  addMilestoneButton: {
+    width: 36,
+    height: 36,
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.orange,
+    justifyContent: "center",
+    alignItems: "center",
   },
   milestonesList: {
     gap: SPACING.sm,
@@ -376,6 +415,15 @@ const styles = StyleSheet.create({
   milestoneTextCompleted: {
     textDecorationLine: "line-through",
     color: COLORS.textSecondary,
+  },
+  emptyMilestones: {
+    alignItems: "center",
+    paddingVertical: SPACING.xl * 2,
+  },
+  emptyMilestonesText: {
+    color: COLORS.textSecondary,
+    fontSize: 14,
+    marginTop: SPACING.md,
   },
 });
 

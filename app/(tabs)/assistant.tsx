@@ -20,7 +20,9 @@ const Assistant = () => {
   const [inputText, setInputText] = useState("");
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const { messages, loading, addMessage } = useAssistantStore();
+  const messages = useAssistantStore((state) => state.messages);
+  const addMessage = useAssistantStore((state) => state.addMessage);
+  const loading = useAssistantStore((state) => state.loading);
 
   const handleSend = async () => {
     const message = inputText.trim();

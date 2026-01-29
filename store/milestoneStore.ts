@@ -1,5 +1,7 @@
 import {
   Milestone,
+  NewMilestone,
+  createMilestone,
   getMilestonesForGoal,
   toggleMilestoneCompletion,
 } from "@/database/queries/milestones";
@@ -10,6 +12,7 @@ interface MilestoneStore {
   loading: boolean;
 
   getMilestonesWithGoalId: (goalId: string) => Promise<void>;
+  createMilestone: (data: NewMilestone) => Promise<Milestone>;
   toggleMilestone: (milestoneId: string) => Promise<void>;
 }
 
@@ -45,6 +48,19 @@ export const useMilestoneStore = create<MilestoneStore>((set, get) => ({
       });
     } catch (error) {
       console.error(`Error toggling milestone: ${error}`);
+      set({ loading: false });
+      throw error;
+    }
+  },
+
+  createMilestone: async (data: NewMilestone): Promise<Milestone> => {
+    set({ loading: true });
+    try {
+      const milestone = await createMilestone(data);
+      set({ milestones: [...get().milestones, milestone], loading: false });
+      return milestone;
+    } catch (error) {
+      console.error("Error creating milestone: ", error);
       set({ loading: false });
       throw error;
     }
