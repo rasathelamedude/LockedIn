@@ -1,3 +1,4 @@
+import ChatBubble from "@/components/ChatBubble";
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
 import { Message, useAssistantStore } from "@/store/assistantStore";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -11,41 +12,38 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from "react-native";
 
 const Assistant = () => {
   const [isFocused, setIsFocused] = useState(false);
-  const messageRef = useRef<string>("");
-  const inputRef = useRef<TextInput>(null);
+  const [inputText, setInputText] = useState("");
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const { messages, loading, addMessage } = useAssistantStore();
 
-  const handleSend = () => {
-    const message = messageRef.current.trim();
-
-    // Check if message is empty
+  const handleSend = async () => {
+    const message = inputText.trim();
     if (message.length === 0) return;
 
     // Construct user message
     const userMessage: Message = {
       role: "user",
       content: message,
-      timestamp: Date.now() as number,
+      timestamp: Date.now(),
     };
 
-    // Add user message to store
-    addMessage(userMessage);
-
-    // Clear input refs
-    messageRef.current = "";
-    if (inputRef.current) {
-      inputRef.current.clear();
-    }
-
-    // Dismiss keyboard
+    // Clear input
+    setInputText("");
     Keyboard.dismiss();
+
+    // Add user message to store
+    await addMessage(userMessage);
+
+    // Scroll to bottom
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   return (
@@ -54,108 +52,108 @@ const Assistant = () => {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.OS === "ios" ? -60 : 0}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.innerContainer}>
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Header */}
-            <View style={styles.header}>
-              <View>
-                <Text style={styles.title}>ASSISTANT</Text>
-                <Text style={styles.subtitle}>
-                  Your goal optimization partner
-                </Text>
-              </View>
-              <MaterialIcons
-                name="auto-awesome"
-                size={24}
-                color={COLORS.orange}
-              />
-            </View>
+      <View style={styles.innerContainer}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>ASSISTANT</Text>
+            <Text style={styles.subtitle}>Your goal optimization partner</Text>
+          </View>
+          <MaterialIcons name="auto-awesome" size={24} color={COLORS.orange} />
+        </View>
 
-            {/* Empty State - Only show when not focused */}
-            {!isFocused && (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyIconContainer}>
-                  <MaterialIcons
-                    name="chat-bubble-outline"
-                    size={40}
-                    color="#3f3f3f"
-                  />
+        {/* Messages */}
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={styles.messagesContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+          }}
+        >
+          {messages.length === 0 ? (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconContainer}>
+                <MaterialIcons
+                  name="chat-bubble-outline"
+                  size={40}
+                  color="#3f3f3f"
+                />
+              </View>
+              <Text style={styles.emptyTitle}>Ask About Your Goals</Text>
+              <Text style={styles.emptyDescription}>
+                Get personalized guidance, break down complex goals, or ask for
+                strategies to improve your efficiency.
+              </Text>
+            </View>
+          ) : (
+            <>
+              {messages.map((msg, index) => (
+                <ChatBubble
+                  key={index}
+                  role={msg.role as "user" | "assistant"}
+                  content={msg.content}
+                  timestamp={msg.timestamp}
+                />
+              ))}
+              {loading && (
+                <View style={styles.loadingContainer}>
+                  <View style={styles.avatarContainer}>
+                    <View style={styles.avatar}>
+                      <MaterialIcons
+                        name="psychology"
+                        size={16}
+                        color={COLORS.orange}
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.loadingBubble}>
+                    <View style={styles.typingIndicator}>
+                      <View style={styles.dot} />
+                      <View style={styles.dot} />
+                      <View style={styles.dot} />
+                    </View>
+                  </View>
                 </View>
-                <Text style={styles.emptyTitle}>Ask About Your Goals</Text>
-                <Text style={styles.emptyDescription}>
-                  Get personalized guidance, break down complex goals, or ask
-                  for strategies to improve your efficiency.
-                </Text>
-              </View>
-            )}
+              )}
+            </>
+          )}
+        </ScrollView>
 
-            {/* Chat Messages */}
-            {messages && messages.length > 0 && (
-              <View style={styles.messagesList}>
-                {messages.map((msg, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.messageBubble,
-                      msg.role === "user"
-                        ? styles.userMessage
-                        : styles.agentMessage,
-                    ]}
-                  >
-                    <Text style={styles.messageText}>{msg.content}</Text>
-                  </View>
-                ))}
-                {loading && (
-                  <View style={styles.loadingIndicator}>
-                    <Text style={styles.loadingText}>Thinking...</Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </ScrollView>
-
-          {/* Chat Input - At bottom of KeyboardAvoidingView */}
-          <View style={styles.inputWrapper}>
-            <View style={styles.inputContainer}>
+        {/* Input */}
+        <View style={styles.inputWrapper}>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Ask for help with your goals..."
+              placeholderTextColor={COLORS.textSecondary}
+              multiline
+              maxLength={2000}
+              value={inputText}
+              onChangeText={setInputText}
+              onSubmitEditing={handleSend}
+              returnKeyType="default"
+            />
+            <TouchableOpacity
+              style={[
+                styles.sendButton,
+                !inputText.trim() && styles.sendButtonDisabled,
+              ]}
+              onPress={handleSend}
+              disabled={loading || !inputText.trim()}
+              activeOpacity={0.7}
+            >
               <MaterialIcons
-                name="chat-bubble-outline"
+                name="arrow-upward"
                 size={20}
-                color={COLORS.textSecondary}
+                color={inputText.trim() ? "#ffffff" : COLORS.textSecondary}
               />
-              <TextInput
-                style={styles.input}
-                placeholder="Ask for help with your goals..."
-                placeholderTextColor="#3f3f3f"
-                multiline
-                returnKeyType="done"
-                blurOnSubmit={true}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                onSubmitEditing={Keyboard.dismiss}
-                ref={inputRef}
-                onChangeText={(text) => (messageRef.current = text)}
-                value={messageRef.current}
-                autoCorrect={true}
-                spellCheck={true}
-              />
-              {/* Send Button */}
-              <TouchableOpacity
-                style={styles.sendButton}
-                activeOpacity={0.7}
-                onPress={handleSend}
-                disabled={loading}
-              >
-                <MaterialIcons name="arrow-upward" size={20} color="#ffffff" />
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
-      </TouchableWithoutFeedback>
+      </View>
     </KeyboardAvoidingView>
   );
 };
@@ -168,17 +166,14 @@ const styles = StyleSheet.create({
   innerContainer: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: SPACING.lg,
-    paddingTop: 60,
-    paddingBottom: SPACING.lg,
-  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: SPACING.xl,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: 60,
+    paddingBottom: SPACING.md,
+    backgroundColor: COLORS.background,
   },
   title: {
     fontSize: 32,
@@ -190,6 +185,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textSecondary,
     marginTop: 4,
+  },
+  messagesContainer: {
+    flex: 1,
+  },
+  messagesContent: {
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.md,
+    flexGrow: 1,
   },
   emptyState: {
     flex: 1,
@@ -221,29 +224,67 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 22,
   },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    marginBottom: SPACING.md,
+  },
+  avatarContainer: {
+    marginRight: SPACING.xs,
+    marginBottom: 4,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.orange + "20",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingBubble: {
+    backgroundColor: COLORS.cardBg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.lg,
+    borderBottomLeftRadius: 4,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm + 2,
+  },
+  typingIndicator: {
+    flexDirection: "row",
+    gap: 4,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.textSecondary,
+  },
   inputWrapper: {
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
-    paddingBottom: 100, // Space for tab bar
+    paddingBottom: 100,
     backgroundColor: COLORS.background,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    backgroundColor: COLORS.cardBg,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    gap: SPACING.sm,
   },
   input: {
     flex: 1,
     color: COLORS.text,
     fontSize: 15,
     maxHeight: 100,
-    paddingTop: 0,
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.cardBg,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 12,
-    gap: SPACING.sm,
+    paddingVertical: SPACING.xs,
   },
   sendButton: {
     width: 36,
@@ -253,37 +294,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  messagesList: {
-    flex: 1,
-    gap: SPACING.md,
-  },
-  messageBubble: {
-    maxWidth: "80%",
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-  },
-  userMessage: {
-    alignSelf: "flex-end",
-    backgroundColor: COLORS.orange,
-  },
-  agentMessage: {
-    alignSelf: "flex-start",
-    backgroundColor: COLORS.cardBg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  messageText: {
-    color: COLORS.text,
-    fontSize: 15,
-  },
-  loadingIndicator: {
-    padding: SPACING.md,
-    alignItems: "center",
-  },
-  loadingText: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
-    fontStyle: "italic",
+  sendButtonDisabled: {
+    backgroundColor: COLORS.border,
   },
 });
 

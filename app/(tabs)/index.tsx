@@ -24,7 +24,7 @@ const Home = () => {
   const goals = useGoalStore((state) => state.goals);
   const loading = useGoalStore((state) => state.loading);
 
-  // Fetch goals on screen focus
+  // Fetch goals and today's hours on screen focus
   useFocusEffect(
     useCallback(() => {
       const fetchData = async () => {
@@ -72,7 +72,8 @@ const Home = () => {
           </View>
 
           <Text style={styles.progressTime}>
-            {todayHours} <Text style={styles.progressTimeUnit}>hrs</Text>
+            {todayHours.toFixed(1)}{" "}
+            <Text style={styles.progressTimeUnit}>hrs</Text>
           </Text>
 
           {/* Progress Bar */}
@@ -83,7 +84,9 @@ const Home = () => {
               end={{ x: 1, y: 0 }}
               style={[
                 styles.progressBarFill,
-                { width: `${(todayHours / dailyHoursGoal) * 100}%` },
+                {
+                  width: `${Math.min(100, (todayHours / dailyHoursGoal) * 100)}%`,
+                },
               ]}
             />
           </View>
@@ -102,18 +105,17 @@ const Home = () => {
             </Text>
           </View>
         ) : (
-          goals?.map((goal: Goal) => (
+          goals.map((goal: Goal) => (
             <CustomGoal
               key={goal.id}
               id={goal.id}
               title={goal.title}
-              description={goal.description || ""}
+              description={goal.description}
               deadline={goal.deadline}
               efficiency={goal.efficiency}
-              timeLogged={goal.hoursLogged}
-              gradientColors={goal.color}
-              createdAt={goal.createdAt}
-              updatedAt={goal.updatedAt || ""}
+              hoursLogged={goal.hoursLogged}
+              targetHours={goal.targetHours}
+              color={goal.color}
             />
           ))
         )}
@@ -220,12 +222,6 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 4,
   },
-  noGoalsText: {
-    fontSize: 16,
-    color: COLORS.textSecondary,
-    textAlign: "center",
-    marginTop: SPACING.lg,
-  },
   emptyGoalsContainer: {
     flex: 1,
     justifyContent: "center",
@@ -259,13 +255,13 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: SPACING.lg,
-    bottom: 100, // Above the tab bar
+    bottom: 100,
     width: 64,
     height: 64,
     borderRadius: 32,
     overflow: "hidden",
-    elevation: 8, // Android shadow
-    shadowColor: "#000", // iOS shadow
+    elevation: 8,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

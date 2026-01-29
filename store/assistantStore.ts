@@ -23,7 +23,7 @@ export const useAssistantStore = create<AssistantStore>((set, get) => ({
   messages: [],
 
   addMessage: async (message: Message) => {
-    // Add user message
+    // Add message
     set((state) => ({ messages: [...state.messages, message] }));
 
     // if it's user's message, fetch AI response
@@ -77,7 +77,14 @@ export const useAssistantStore = create<AssistantStore>((set, get) => ({
         }));
       } catch (error) {
         console.error(`Error occured while fetching AI response: ${error}`);
-        set({ error: (error as Error).message, loading: false });
+        // remove the message added
+        set((state) => ({
+          messages: state.messages.filter(
+            (stateMessage) => stateMessage.content !== message.content,
+          ),
+          error: (error as Error).message,
+          loading: false,
+        }));
       }
     }
   },
