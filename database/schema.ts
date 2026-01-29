@@ -1,9 +1,10 @@
 import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import * as Crypto from "expo-crypto";
 
 export const goals = sqliteTable("goals", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+    .$defaultFn(() => Crypto.randomUUID()),
   title: text("title").notNull().unique(),
   description: text("description"),
   targetHours: real("target_hours").notNull(),
@@ -23,7 +24,7 @@ export const goals = sqliteTable("goals", {
 export const milestones = sqliteTable("milestones", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+    .$defaultFn(() => Crypto.randomUUID()),
   goalId: text("goal_id")
     .notNull()
     .references(() => goals.id, { onDelete: "cascade" }),
@@ -36,7 +37,7 @@ export const milestones = sqliteTable("milestones", {
 export const focusSessions = sqliteTable("focus_sessions", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+    .$defaultFn(() => Crypto.randomUUID()),
   goalId: text("goal_id")
     .notNull()
     .references(() => goals.id, { onDelete: "cascade" }),
@@ -52,7 +53,7 @@ export const focusSessions = sqliteTable("focus_sessions", {
 export const dailyProgress = sqliteTable("daily_progress", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+    .$defaultFn(() => Crypto.randomUUID()),
   date: text("date").notNull().unique(), // YYYY-MM-DD
   streakCount: integer("streak_count").notNull().default(1),
   totalMinutes: real("total_minutes").notNull().default(0),
@@ -62,7 +63,7 @@ export const dailyProgress = sqliteTable("daily_progress", {
 export const chatMessage = sqliteTable("chat_messages", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
+    .$defaultFn(() => Crypto.randomUUID()),
   role: text("role", { enum: ["user", "assistant"] }).notNull(),
   content: text("content").notNull(),
   createdAt: integer("created_at", { mode: "timestamp" })
