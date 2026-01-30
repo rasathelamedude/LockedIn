@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 
 const GoalDetail = () => {
   const { id } = useLocalSearchParams() as { id: string };
@@ -67,10 +68,23 @@ const GoalDetail = () => {
 
           // Refresh milestones
           await getMilestonesWithGoalId(id);
-          Alert.alert("Success", "Milestone created!");
+          Toast.show({
+            type: "success",
+            text1: "Milestone Created!",
+            text2: "Your milestone has been successfully created.",
+            position: "top",
+            visibilityTime: 3000,
+          });
         } catch (error) {
-          Alert.alert("Error", "Could not create milestone");
+          Toast.show({
+            type: "error",
+            text1: "Something went wrong",
+            text2: "Milestone could not be created, please try again.",
+            position: "top",
+            visibilityTime: 3000,
+          });
           console.error(error);
+          return;
         }
       },
       "plain-text",
@@ -84,8 +98,27 @@ const GoalDetail = () => {
         text: "Delete",
         style: "destructive",
         onPress: () => {
-          removeGoal(id);
-          router.back();
+          try {
+            removeGoal(id);
+            Toast.show({
+              type: "success",
+              text1: "Goal Deleted!",
+              text2: "Your goal has been successfully deleted.",
+              position: "top",
+              visibilityTime: 3000,
+            });
+            router.back();
+          } catch (error) {
+            Toast.show({
+              type: "error",
+              text1: "Something went wrong",
+              text2: "Goal could not be deleted, please try again.",
+              position: "top",
+              visibilityTime: 3000,
+            });
+            console.error(`Error deleting goal: ${error}`);
+            return;
+          }
         },
       },
     ]);
@@ -261,8 +294,24 @@ const GoalDetail = () => {
                       try {
                         await toggleMilestone(milestone.id);
                         await getMilestonesWithGoalId(id);
+                        Toast.show({
+                          type: "info",
+                          text1: "Milestone Completed!",
+                          text2:
+                            "Your milestone has been successfully completed.",
+                          position: "top",
+                          visibilityTime: 3000,
+                        });
                       } catch (error) {
-                        Alert.alert("Error", "Could not complete milestone");
+                        Toast.show({
+                          type: "error",
+                          text1: "Something went wrong",
+                          text2:
+                            "Milestone could not be completed, please try again.",
+                          position: "top",
+                          visibilityTime: 3000,
+                        });
+                        console.error(`Error completing milestone: ${error}`);
                       }
                     }
                   }}

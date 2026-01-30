@@ -14,9 +14,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 
 const Assistant = () => {
-  const [isFocused, setIsFocused] = useState(false);
   const [inputText, setInputText] = useState("");
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -40,12 +40,22 @@ const Assistant = () => {
     Keyboard.dismiss();
 
     // Add user message to store
-    await addMessage(userMessage);
-
-    // Scroll to bottom
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    try {
+      await addMessage(userMessage);
+      // Scroll to bottom
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    } catch (error) {
+      console.error(`Error occured while adding message: ${error}`);
+      Toast.show({
+        type: "error",
+        text1: "Something went wrong",
+        text2: "Message could not be sent, please try again.",
+        position: "top",
+        visibilityTime: 3000,
+      });
+    }
   };
 
   return (

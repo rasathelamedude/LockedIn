@@ -10,9 +10,30 @@ import { runMigrations } from "../database/migrate";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useEffect, useState } from "react";
+import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
 
 export const unstable_settings = {
   anchor: "(tabs)",
+};
+
+const toastConfig = {
+  success: (props: any) => (
+    <BaseToast
+      {...props}
+      style={{ borderLeftColor: "#10b981" }}
+      contentContainerStyle={{ paddingHorizontal: 15 }}
+      text1Style={{ fontSize: 16, fontWeight: "600" }}
+      text2Style={{ fontSize: 14 }}
+    />
+  ),
+  error: (props: any) => (
+    <ErrorToast
+      {...props}
+      style={{ borderLeftColor: "#ef4444" }}
+      text1Style={{ fontSize: 16, fontWeight: "600" }}
+      text2Style={{ fontSize: 14 }}
+    />
+  ),
 };
 
 export default function RootLayout() {
@@ -39,6 +60,7 @@ export default function RootLayout() {
         <Stack.Screen name="goal/[id]" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
+      <Toast config={toastConfig} />
     </ThemeProvider>
   );
 }

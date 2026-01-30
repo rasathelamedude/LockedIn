@@ -85,6 +85,7 @@ export const useAssistantStore = create<AssistantStore>((set, get) => ({
           error: (error as Error).message,
           loading: false,
         }));
+        throw error;
       }
     }
   },

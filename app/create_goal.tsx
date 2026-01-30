@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 
 const CreateGoalPage = () => {
   const [title, setTitle] = useState("");
@@ -55,9 +56,21 @@ const CreateGoalPage = () => {
 
     try {
       await addGoal(newGoal);
-      Alert.alert("Goal created successfully!");
+      Toast.show({
+        type: "success",
+        text1: "Goal Created!",
+        text2: "Your goal has been saved successfully.",
+        position: "top",
+        visibilityTime: 3000,
+      });
     } catch (error) {
-      Alert.alert("Error creating goal. Please try again.");
+      Toast.show({
+        type: "error",
+        text1: "Error Creating Goal",
+        text2: "Please try again later.",
+        position: "top",
+        visibilityTime: 3000,
+      });
       console.error("Error creating goal:", error);
       return;
     }
