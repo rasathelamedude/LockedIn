@@ -22,6 +22,7 @@ const GoalDetail = () => {
   const getGoalWithId = useGoalStore((state) => state.getGoalWithId);
   const loading = useGoalStore((state) => state.loading);
   const error = useGoalStore((state) => state.error);
+  const removeGoal = useGoalStore((state) => state.removeGoal);
 
   const milestones = useMilestoneStore((state) => state.milestones);
   const getMilestonesWithGoalId = useMilestoneStore(
@@ -74,6 +75,22 @@ const GoalDetail = () => {
       },
       "plain-text",
     );
+  };
+
+  const handleDeleteGoal = () => {
+    Alert.alert("Delete Goal", "Are you sure you want to delete this goal?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          removeGoal(id);
+          router.back();
+        },
+      },
+    ]);
+
+    return;
   };
 
   if (loading) {
@@ -129,34 +146,49 @@ const GoalDetail = () => {
             <MaterialIcons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
 
-          <View
-            style={[
-              styles.efficiencyBadge,
-              {
-                backgroundColor:
-                  goal.efficiency && goal.efficiency >= 90
-                    ? COLORS.green + "30"
-                    : goal.efficiency && goal.efficiency >= 70
-                      ? COLORS.orange + "30"
-                      : COLORS.red + "30",
-              },
-            ]}
-          >
-            <Text
+          <View style={styles.headerRight}>
+            <View
               style={[
-                styles.efficiencyText,
+                styles.efficiencyBadge,
                 {
-                  color:
+                  backgroundColor:
                     goal.efficiency && goal.efficiency >= 90
-                      ? COLORS.green
+                      ? COLORS.green + "30"
                       : goal.efficiency && goal.efficiency >= 70
-                        ? COLORS.orange
-                        : COLORS.red,
+                        ? COLORS.orange + "30"
+                        : COLORS.red + "30",
                 },
               ]}
             >
-              {goal.efficiency ?? 0}% Complete
-            </Text>
+              <Text
+                style={[
+                  styles.efficiencyText,
+                  {
+                    color:
+                      goal.efficiency && goal.efficiency >= 90
+                        ? COLORS.green
+                        : goal.efficiency && goal.efficiency >= 70
+                          ? COLORS.orange
+                          : COLORS.red,
+                  },
+                ]}
+              >
+                {goal.efficiency ?? 0}% Efficient
+              </Text>
+            </View>
+
+            {/* Delete Button */}
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={handleDeleteGoal}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons
+                name="delete-outline"
+                size={22}
+                color={COLORS.red}
+              />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -308,6 +340,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+  },
   efficiencyBadge: {
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.xs,
@@ -316,6 +353,16 @@ const styles = StyleSheet.create({
   efficiencyText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  deleteButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: COLORS.red + "15",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.red + "30",
+    justifyContent: "center",
+    alignItems: "center",
   },
   goalInfo: {
     marginBottom: SPACING.xl,
