@@ -9,6 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,24 +19,32 @@ import {
 
 const Home = () => {
   const [todayHours, setTodayHours] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const dailyHoursGoal = 8;
 
   const loadGoals = useGoalStore((state) => state.loadGoals);
   const goals = useGoalStore((state) => state.goals);
   const loading = useGoalStore((state) => state.loading);
 
-  // Fetch goals and today's hours on screen focus
+  const fetchData = useCallback(async () => {
+    await loadGoals();
+    const hours = await getTodayFocusHours();
+    setTodayHours(hours);
+  }, [loadGoals]);
+
+  // Fetch goals on screen focus
   useFocusEffect(
     useCallback(() => {
-      const fetchData = async () => {
-        await loadGoals();
-        const hours = await getTodayFocusHours();
-        setTodayHours(hours);
-      };
-
       fetchData();
-    }, [loadGoals]),
+    }, [fetchData]),
   );
+
+  // Pull to refresh handler
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  }, [fetchData]);
 
   if (loading && goals.length === 0) {
     return (
@@ -51,6 +60,14 @@ const Home = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={COLORS.orange}
+            colors={[COLORS.orange]}
+          />
+        }
       >
         {/* Header */}
         <View style={styles.header}>
