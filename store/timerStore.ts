@@ -16,6 +16,7 @@ interface TimerStore {
   startTimer: (goalId: string) => Promise<void>;
   completeTimer: () => Promise<void>;
   cancelTimer: () => Promise<void>;
+  resumeTimer: () => void;
   tick: () => void;
   stopTick: () => void;
 }
@@ -104,15 +105,20 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
       }
     }, 1000);
 
-    set({ timerId: newTimerId });
+    set({ timerId: newTimerId, isRunning: true });
   },
 
   stopTick: () => {
     const { timerId } = get();
     if (timerId) {
       clearInterval(timerId);
-      set({ timerId: null });
+      set({ timerId: null, isRunning: false });
     }
+  },
+
+  resumeTimer: () => {
+    set({ isRunning: true });
+    get().tick();
   },
 
   completeTimer: async () => {

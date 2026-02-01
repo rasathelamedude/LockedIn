@@ -2,17 +2,16 @@ import { COLORS, RADIUS, SPACING } from "@/constants/styles";
 import { useTimerStore } from "@/store/timerStore";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useLocalSearchParams } from "expo-router";
 import React, { useEffect } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Toast from "react-native-toast-message";
 
 interface PomodoroTimerProps {
   gradientColors: [string, string];
+  goalId: string;
 }
 
-const PomodoroTimer = ({ gradientColors }: PomodoroTimerProps) => {
-  const { goalId } = useLocalSearchParams() as { goalId: string };
-
+const PomodoroTimer = ({ gradientColors, goalId }: PomodoroTimerProps) => {
   const isRunning = useTimerStore((state) => state.isRunning);
   const timeRemaining = useTimerStore((state) => state.timeRemaining);
   const loading = useTimerStore((state) => state.loading);
@@ -20,22 +19,51 @@ const PomodoroTimer = ({ gradientColors }: PomodoroTimerProps) => {
   const startTimer = useTimerStore((state) => state.startTimer);
   const completeTimer = useTimerStore((state) => state.completeTimer);
   const cancelTimer = useTimerStore((state) => state.cancelTimer);
-  const tick = useTimerStore((state) => state.tick);
   const stopTick = useTimerStore((state) => state.stopTick);
+  const resumeTimer = useTimerStore((state) => state.resumeTimer);
 
   const toggleTimer = async () => {
-    if (!isRunning) {
+    if (!isRunning && timeRemaining === 25 * 60) {
+      // Start timer
       try {
         await startTimer(goalId);
       } catch (error) {
         Alert.alert("Error starting timer. Please try again.");
       }
+    } else if (!isRunning && timeRemaining !== 25 * 60) {
+      // Resume timer
+      resumeTimer();
     } else {
+      // Pause timer
       stopTick();
     }
   };
 
-  const handleReset = async () => {
+  const handleComplete = async () => {
+    Alert.alert("Complete Session?", "Mark this focus session as complete.", [
+      { text: "Keep Going", style: "cancel" },
+      {
+        text: "Complete Session",
+        style: "default",
+        onPress: async () => {
+          try {
+            await completeTimer();
+            Toast.show({
+              type: "success",
+              text1: "Session Completed",
+              text2: "Great work! Your session has been saved.",
+              position: "top",
+              visibilityTime: 3000,
+            });
+          } catch (error) {
+            Alert.alert("Error", "Could not complete session");
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleCancel = async () => {
     Alert.alert(
       "Cancel Session?",
       "This will discard your progress for this session.",
@@ -47,6 +75,13 @@ const PomodoroTimer = ({ gradientColors }: PomodoroTimerProps) => {
           onPress: async () => {
             try {
               await cancelTimer();
+              Toast.show({
+                type: "info",
+                text1: "Session Cancelled",
+                text2: "Your session has been successfully cancelled.",
+                position: "top",
+                visibilityTime: 3000,
+              });
             } catch (error) {
               Alert.alert("Error", "Could not cancel session");
             }
@@ -61,12 +96,6 @@ const PomodoroTimer = ({ gradientColors }: PomodoroTimerProps) => {
       completeTimer();
     }
   }, [completeTimer, isRunning, timeRemaining]);
-
-  useEffect(() => {
-    if (isRunning) {
-      tick();
-    }
-  }, [isRunning, tick]);
 
   // Format time as MM:SS
   const minutes = Math.floor(timeRemaining / 60);
@@ -85,7 +114,7 @@ const PomodoroTimer = ({ gradientColors }: PomodoroTimerProps) => {
 
       {/* Button Container */}
       <View style={styles.buttonContainer}>
-        {/* Start Button */}
+        {/* Start/Resume/Pause Button */}
         <TouchableOpacity
           style={styles.button}
           onPress={toggleTimer}
@@ -104,23 +133,40 @@ const PomodoroTimer = ({ gradientColors }: PomodoroTimerProps) => {
               color="#ffffff"
             />
             <Text style={styles.buttonText}>
-              {isRunning ? "SESSION ACTIVE" : "START FOCUS"}
+              {isRunning ? "PAUSE" : "START FOCUS"}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Cancel Button - Show when session is active */}
-        {isRunning && (
-          <TouchableOpacity
-            style={styles.resetButton}
-            onPress={handleReset}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="close" size={20} color={COLORS.red} />
-            <Text style={[styles.resetText, { color: COLORS.red }]}>
-              Cancel Session
-            </Text>
-          </TouchableOpacity>
+        {/* Complete and Cancel Buttons - Show when paused */}
+        {!isRunning && timeRemaining !== 25 * 60 && (
+          <View style={styles.actionButtonContainer}>
+            <TouchableOpacity
+              style={styles.completeButton}
+              onPress={handleComplete}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons
+                name="check-circle"
+                size={20}
+                color={COLORS.green}
+              />
+              <Text style={[styles.actionText, { color: COLORS.green }]}>
+                Complete
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={handleCancel}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="close" size={20} color={COLORS.red} />
+              <Text style={[styles.actionText, { color: COLORS.red }]}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
     </View>
@@ -172,6 +218,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     letterSpacing: 1,
+  },
+  actionButtonContainer: {
+    flexDirection: "row",
+    gap: SPACING.sm,
+  },
+  completeButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: SPACING.sm,
+    gap: SPACING.xs,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.green,
+  },
+  cancelButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: SPACING.sm,
+    gap: SPACING.xs,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.red,
+  },
+  actionText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   resetButton: {
     flexDirection: "row",

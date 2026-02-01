@@ -267,6 +267,7 @@ const GoalDetail = () => {
         {/* Pomodoro Timer */}
         <PomodoroTimer
           gradientColors={[goal.color, goal.color] as [string, string]}
+          goalId={id}
         />
 
         {/* Milestones Section */}
