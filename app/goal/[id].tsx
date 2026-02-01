@@ -21,9 +21,9 @@ const GoalDetail = () => {
   const [goal, setGoal] = useState<Goal | null>(null);
 
   const getGoalWithId = useGoalStore((state) => state.getGoalWithId);
+  const deleteGoal = useGoalStore((state) => state.deleteGoal);
   const loading = useGoalStore((state) => state.loading);
   const error = useGoalStore((state) => state.error);
-  const removeGoal = useGoalStore((state) => state.removeGoal);
 
   const milestones = useMilestoneStore((state) => state.milestones);
   const getMilestonesWithGoalId = useMilestoneStore(
@@ -31,6 +31,7 @@ const GoalDetail = () => {
   );
   const createMilestone = useMilestoneStore((state) => state.createMilestone);
   const toggleMilestone = useMilestoneStore((state) => state.toggleMilestone);
+  const deleteMilestone = useMilestoneStore((state) => state.deleteMilestone);
 
   const fetchData = useCallback(async () => {
     try {
@@ -66,64 +67,78 @@ const GoalDetail = () => {
             orderIndex: nextOrderIndex,
           });
 
-          // Refresh milestones
           await getMilestonesWithGoalId(id);
           Toast.show({
             type: "success",
             text1: "Milestone Created!",
-            text2: "Your milestone has been successfully created.",
+            text2: "Keep building towards your goal.",
             position: "top",
-            visibilityTime: 3000,
+            visibilityTime: 2000,
           });
         } catch (error) {
-          Toast.show({
-            type: "error",
-            text1: "Something went wrong",
-            text2: "Milestone could not be created, please try again.",
-            position: "top",
-            visibilityTime: 3000,
-          });
+          Alert.alert("Error", "Could not create milestone");
           console.error(error);
-          return;
         }
       },
       "plain-text",
     );
   };
 
-  const handleDeleteGoal = () => {
-    Alert.alert("Delete Goal", "Are you sure you want to delete this goal?", [
+  const handleDeleteMilestone = (
+    milestoneId: string,
+    milestoneTitle: string,
+  ) => {
+    Alert.alert("Delete Milestone", `Delete "${milestoneTitle}"?`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => {
+        onPress: async () => {
           try {
-            removeGoal(id);
+            await deleteMilestone(milestoneId);
+            await getMilestonesWithGoalId(id);
             Toast.show({
-              type: "success",
-              text1: "Goal Deleted!",
-              text2: "Your goal has been successfully deleted.",
+              type: "info",
+              text1: "Milestone Deleted",
               position: "top",
-              visibilityTime: 3000,
+              visibilityTime: 2000,
             });
-            router.back();
           } catch (error) {
-            Toast.show({
-              type: "error",
-              text1: "Something went wrong",
-              text2: "Goal could not be deleted, please try again.",
-              position: "top",
-              visibilityTime: 3000,
-            });
-            console.error(`Error deleting goal: ${error}`);
-            return;
+            Alert.alert("Error", "Could not delete milestone");
           }
         },
       },
     ]);
+  };
 
-    return;
+  const handleDeleteGoal = () => {
+    Alert.alert(
+      "Delete Goal",
+      "Are you sure you want to delete this goal? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteGoal(id);
+              Toast.show({
+                type: "success",
+                text1: "Goal Deleted",
+                text2: "The goal has been removed.",
+                position: "top",
+                visibilityTime: 2000,
+              });
+              router.back();
+            } catch (error) {
+              Alert.alert("Error", "Could not delete goal");
+              console.error(error);
+            }
+          },
+        },
+      ],
+    );
   };
 
   if (loading) {
@@ -134,7 +149,7 @@ const GoalDetail = () => {
     );
   }
 
-  if (error) {
+  if (error || !goal) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Error loading goal.</Text>
@@ -142,15 +157,6 @@ const GoalDetail = () => {
     );
   }
 
-  if (!goal) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Goal not found.</Text>
-      </View>
-    );
-  }
-
-  // Calculate days left
   const daysLeft = goal.deadline
     ? Math.ceil(
         (new Date(goal.deadline).getTime() - new Date().getTime()) /
@@ -158,7 +164,6 @@ const GoalDetail = () => {
       )
     : null;
 
-  // Calculate hours per day needed
   const hoursPerDay =
     goal.deadline && daysLeft && daysLeft > 0
       ? ((goal.targetHours - goal.hoursLogged) / daysLeft).toFixed(1)
@@ -206,9 +211,18 @@ const GoalDetail = () => {
                   },
                 ]}
               >
-                {goal.efficiency ?? 0}% Efficient
+                {goal.efficiency?.toFixed(1) ?? 0}% Efficient
               </Text>
             </View>
+
+            {/* Edit Button */}
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => router.push(`/edit_goal?id=${id}`)}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="edit" size={20} color={COLORS.orange} />
+            </TouchableOpacity>
 
             {/* Delete Button */}
             <TouchableOpacity
@@ -295,27 +309,14 @@ const GoalDetail = () => {
                       try {
                         await toggleMilestone(milestone.id);
                         await getMilestonesWithGoalId(id);
-                        Toast.show({
-                          type: "info",
-                          text1: "Milestone Completed!",
-                          text2:
-                            "Your milestone has been successfully completed.",
-                          position: "top",
-                          visibilityTime: 3000,
-                        });
                       } catch (error) {
-                        Toast.show({
-                          type: "error",
-                          text1: "Something went wrong",
-                          text2:
-                            "Milestone could not be completed, please try again.",
-                          position: "top",
-                          visibilityTime: 3000,
-                        });
-                        console.error(`Error completing milestone: ${error}`);
+                        Alert.alert("Error", "Could not complete milestone");
                       }
                     }
                   }}
+                  onLongPress={() =>
+                    handleDeleteMilestone(milestone.id, milestone.title)
+                  }
                   disabled={milestone.completed}
                   activeOpacity={milestone.completed ? 1 : 0.7}
                   style={[
@@ -339,6 +340,22 @@ const GoalDetail = () => {
                   >
                     {milestone.title}
                   </Text>
+
+                  {/* Delete icon - only show when not completed */}
+                  {!milestone.completed && (
+                    <TouchableOpacity
+                      onPress={() =>
+                        handleDeleteMilestone(milestone.id, milestone.title)
+                      }
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                      <MaterialIcons
+                        name="close"
+                        size={18}
+                        color={COLORS.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  )}
                 </TouchableOpacity>
               ))}
             </View>
@@ -403,6 +420,16 @@ const styles = StyleSheet.create({
   efficiencyText: {
     fontSize: 14,
     fontWeight: "600",
+  },
+  editButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: COLORS.orange + "15",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.orange + "30",
+    justifyContent: "center",
+    alignItems: "center",
   },
   deleteButton: {
     width: 40,

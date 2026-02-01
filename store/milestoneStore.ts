@@ -14,6 +14,7 @@ interface MilestoneStore {
   getMilestonesWithGoalId: (goalId: string) => Promise<void>;
   createMilestone: (data: NewMilestone) => Promise<Milestone>;
   toggleMilestone: (milestoneId: string) => Promise<void>;
+  deleteMilestone: (milestoneId: string) => Promise<void>;
 }
 
 export const useMilestoneStore = create<MilestoneStore>((set, get) => ({
@@ -64,5 +65,9 @@ export const useMilestoneStore = create<MilestoneStore>((set, get) => ({
       set({ loading: false });
       throw error;
     }
+  },
+
+  deleteMilestone: async (milestoneId: string) => {
+    
   },
 }));
