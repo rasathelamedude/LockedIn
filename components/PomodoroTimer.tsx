@@ -15,26 +15,49 @@ const PomodoroTimer = ({ gradientColors, goalId }: PomodoroTimerProps) => {
   const isRunning = useTimerStore((state) => state.isRunning);
   const timeRemaining = useTimerStore((state) => state.timeRemaining);
   const loading = useTimerStore((state) => state.loading);
-
   const startTimer = useTimerStore((state) => state.startTimer);
   const completeTimer = useTimerStore((state) => state.completeTimer);
   const cancelTimer = useTimerStore((state) => state.cancelTimer);
   const stopTick = useTimerStore((state) => state.stopTick);
   const resumeTimer = useTimerStore((state) => state.resumeTimer);
+  const activeGoalId = useTimerStore((state) => state.goalId);
+
+  const isThisGoalActive = activeGoalId === goalId;
+  const showActiveTimer = isRunning && isThisGoalActive;
+  const showPausedTimer =
+    !isRunning && isThisGoalActive && timeRemaining !== 25 * 60;
 
   const toggleTimer = async () => {
+    // Prevent starting a session if another session is already active
+    if (activeGoalId && !isThisGoalActive) {
+      Toast.show({
+        type: "error",
+        text1: "Session Already Active",
+        text2: "Please complete the current session before starting a new one.",
+        position: "top",
+        visibilityTime: 3000,
+      });
+      return;
+    }
+
+    // Start a new timer
     if (!isRunning && timeRemaining === 25 * 60) {
-      // Start timer
       try {
         await startTimer(goalId);
       } catch (error) {
-        Alert.alert("Error starting timer. Please try again.");
+        Toast.show({
+          type: "error",
+          text1: "Error Starting Timer",
+          text2: "Could not start timer. Please try again later.",
+          position: "top",
+          visibilityTime: 3000,
+        });
       }
     } else if (!isRunning && timeRemaining !== 25 * 60) {
-      // Resume timer
+      // resume timer
       resumeTimer();
-    } else {
-      // Pause timer
+    } else if (isRunning && isThisGoalActive) {
+      // pause timer
       stopTick();
     }
   };
@@ -92,10 +115,17 @@ const PomodoroTimer = ({ gradientColors, goalId }: PomodoroTimerProps) => {
   };
 
   useEffect(() => {
-    if (isRunning && timeRemaining === 0) {
+    if (isRunning && timeRemaining === 0 && isThisGoalActive) {
       completeTimer();
+      Toast.show({
+        type: "success",
+        text1: "Time's Up! 🎉",
+        text2: "Great job! Your session is complete.",
+        position: "top",
+        visibilityTime: 3000,
+      });
     }
-  }, [completeTimer, isRunning, timeRemaining]);
+  }, [completeTimer, isRunning, timeRemaining, isThisGoalActive]);
 
   // Format time as MM:SS
   const minutes = Math.floor(timeRemaining / 60);
@@ -104,12 +134,34 @@ const PomodoroTimer = ({ gradientColors, goalId }: PomodoroTimerProps) => {
     .toString()
     .padStart(2, "0")}`;
 
+  if (activeGoalId && !isThisGoalActive) {
+    return (
+      <View style={styles.timerCard}>
+        <View style={styles.inactiveState}>
+          <MaterialIcons
+            name="timer-off"
+            size={40}
+            color={COLORS.textSecondary}
+          />
+          <Text style={styles.inactiveText}>
+            Another goal has an active session
+          </Text>
+          <Text style={styles.inactiveSubtext}>
+            Complete or cancel it to start a new session
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.timerCard}>
       {/* Timer Display */}
       <View style={styles.timerDisplay}>
         <Text style={styles.timeText}>{timeDisplay}</Text>
-        <Text style={styles.label}>FOCUS SESSION</Text>
+        <Text style={styles.label}>
+          {showActiveTimer ? "SESSION IN PROGRESS" : "FOCUS SESSION"}
+        </Text>
       </View>
 
       {/* Button Container */}
@@ -122,24 +174,28 @@ const PomodoroTimer = ({ gradientColors, goalId }: PomodoroTimerProps) => {
           disabled={loading}
         >
           <LinearGradient
-            colors={isRunning ? ["#374151", "#1f2937"] : gradientColors}
+            colors={showActiveTimer ? ["#374151", "#1f2937"] : gradientColors}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.gradientButton}
           >
             <MaterialIcons
-              name={isRunning ? "pause" : "play-arrow"}
+              name={showActiveTimer ? "pause" : "play-arrow"}
               size={20}
               color="#ffffff"
             />
             <Text style={styles.buttonText}>
-              {isRunning ? "PAUSE" : "START FOCUS"}
+              {showActiveTimer
+                ? "PAUSE"
+                : showPausedTimer
+                  ? "RESUME"
+                  : "START FOCUS"}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
 
         {/* Complete and Cancel Buttons - Show when paused */}
-        {!isRunning && timeRemaining !== 25 * 60 && (
+        {showPausedTimer && (
           <View style={styles.actionButtonContainer}>
             <TouchableOpacity
               style={styles.completeButton}
@@ -249,17 +305,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  resetButton: {
-    flexDirection: "row",
+  inactiveState: {
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: SPACING.sm,
-    gap: SPACING.xs,
+    paddingVertical: SPACING.xl,
   },
-  resetText: {
-    color: COLORS.textSecondary,
-    fontSize: 14,
+  inactiveText: {
+    fontSize: 16,
     fontWeight: "600",
+    color: COLORS.text,
+    marginTop: SPACING.md,
+    textAlign: "center",
+  },
+  inactiveSubtext: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    marginTop: SPACING.xs,
+    textAlign: "center",
   },
 });
 

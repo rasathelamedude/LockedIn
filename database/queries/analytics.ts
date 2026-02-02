@@ -1,4 +1,4 @@
-import { desc, eq, sql, sum } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "../client";
 import { dailyProgress, focusSessions } from "../schema";
 
@@ -10,30 +10,39 @@ function getTodayDateString(): string {
 }
 
 // Get total focus hours for today;
-export const getTodayFocusHours = async (): Promise<number> => {
-  // Get today's date
-  const today = getTodayDateString();
+export async function getTodayFocusHours(): Promise<number> {
+  const today = new Date();
+  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
-  // SQLite stores timestamps as integers (milliseconds)
-  // Get start and end of today in milliseconds
-  const startOfDay = new Date(today).setHours(0, 0, 0, 0);
-  const endOfDay = new Date(today).setHours(23, 59, 59, 999);
+  try {
+    // Get all completed sessions from today
+    const sessions = await db
+      .select()
+      .from(focusSessions)
+      .where(
+        and(
+          gte(focusSessions.startTime, startOfDay),
+          lte(focusSessions.startTime, endOfDay),
+          eq(focusSessions.status, "completed"),
+        ),
+      );
 
-  // Get total focus hours for today
-  const result = await db
-    .select({
-      totalMinutes: sum(focusSessions.durationMinutes),
-    })
-    .from(focusSessions)
-    .where(
-      sql`${focusSessions.startTime} >= ${startOfDay} AND ${focusSessions.startTime} <= ${endOfDay}`,
-    )
-    .get();
+    // Sum up duration in minutes
+    const totalMinutes = sessions.reduce(
+      (sum, session) => sum + (session.durationMinutes || 0),
+      0,
+    );
 
-  // Convert minutes to hours
-  const totalHours = Number(result?.totalMinutes || 0) / 60;
-  return totalHours || 0;
-};
+    // Convert minutes to hours with 1 decimal place
+    const totalHours = totalMinutes / 60;
+
+    return Number(totalHours.toFixed(1));
+  } catch (error) {
+    console.error("Error getting today's focus hours:", error);
+    return 0;
+  }
+}
 
 // Get today's progress record or create one if it doesn't exist
 export const getTodayProgress = async (): Promise<DailyProgress> => {
@@ -77,14 +86,19 @@ export const updateTodayProgress = async (
   const newDuration = sessionDurationMinutes + progress.totalMinutes;
 
   // Get unique goals that was worked on today
-  const startOfDay = new Date(today).setHours(0, 0, 0, 0);
-  const endOfDay = new Date(today).setHours(23, 59, 59, 999);
+  const startOfDay = new Date(today);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(today);
+  endOfDay.setHours(23, 59, 59, 999);
 
   const uniqueGoals = await db
     .selectDistinct({ goalId: focusSessions.goalId })
     .from(focusSessions)
     .where(
-      sql`${focusSessions.startTime} >= ${startOfDay} AND ${focusSessions.startTime} <= ${endOfDay}`,
+      and(
+        gte(focusSessions.startTime, startOfDay),
+        lte(focusSessions.startTime, endOfDay),
+      ),
     )
     .all();
 
@@ -118,96 +132,93 @@ export const updateTodayProgress = async (
 };
 
 // Get streak count (consecutive days with sessions)
-export const getStreakCount = async (): Promise<number> => {
-  const allProgress = await db
-    .select()
-    .from(dailyProgress)
-    .orderBy(desc(dailyProgress.date))
-    .all();
+export async function getStreakCount(): Promise<number> {
+  try {
+    const allProgress = await db
+      .select()
+      .from(dailyProgress)
+      .orderBy(desc(dailyProgress.date));
 
-  if (allProgress.length === 0) return 0;
+    if (allProgress.length === 0) return 0;
 
-  const today = getTodayDateString();
-  const currentDate = new Date(today);
-  let streak = 0;
+    let streak = 0;
+    const today = new Date().setHours(0, 0, 0, 0);
 
-  for (const progress of allProgress) {
-    const progressDate = progress.date;
-    const expectedDate = currentDate.toISOString().split("T")[0];
+    for (let i = 0; i < allProgress.length; i++) {
+      const progressDate = new Date(allProgress[i].date).setHours(0, 0, 0, 0);
+      const expectedDate = today - streak * 86400000;
 
-    // If this date doesn't match the expected date, break streak
-    if (progressDate !== expectedDate) break;
+      if (progressDate === expectedDate && allProgress[i].totalMinutes > 0) {
+        streak++;
+      } else {
+        break;
+      }
+    }
 
-    // If no minutes logged on this date, break streak
-    if (progress.totalMinutes === 0) break;
-
-    streak++;
-
-    // Move to previous date
-    currentDate.setDate(currentDate.getDate() - 1);
+    return Math.max(streak, allProgress[0].totalMinutes > 0 ? 1 : 0);
+  } catch (error) {
+    console.error("Error getting streak:", error);
+    return 0;
   }
+}
 
-  return streak;
-};
-
-//
-export const getWeeklyStats = async (): Promise<{
+export async function getWeeklyStats(): Promise<{
   totalHours: number;
   avgPerDay: number;
   mostProductiveDay: string;
-}> => {
-  const today = getTodayDateString();
+}> {
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000);
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const sevenDaysAgoTimestamp = sevenDaysAgo.setHours(0, 0, 0, 0);
+  try {
+    const sessions = await db
+      .select()
+      .from(focusSessions)
+      .where(
+        and(
+          gte(focusSessions.startTime, new Date(sevenDaysAgo)),
+          eq(focusSessions.status, "completed"),
+        ),
+      );
 
-  const sessions = await db
-    .select()
-    .from(focusSessions)
-    .where(sql`${focusSessions.startTime} >= ${sevenDaysAgoTimestamp}`)
-    .all();
+    if (sessions.length === 0) {
+      return {
+        totalHours: 0,
+        avgPerDay: 0,
+        mostProductiveDay: "None",
+      };
+    }
 
-  if (sessions.length === 0) {
+    // Calculate total minutes and convert to hours
+    const totalMinutes = sessions.reduce(
+      (sum, session) => sum + (session.durationMinutes || 0),
+      0,
+    );
+    const totalHours = totalMinutes / 60;
+
+    // Group by day to find most productive
+    const dayMinutes: Record<string, number> = {};
+    sessions.forEach((session) => {
+      const date = new Date(session.startTime).toDateString();
+      dayMinutes[date] =
+        (dayMinutes[date] || 0) + (session.durationMinutes || 0);
+    });
+
+    const mostProductiveDay =
+      Object.keys(dayMinutes).length > 0
+        ? Object.entries(dayMinutes).sort((a, b) => b[1] - a[1])[0][0]
+        : "None";
+
+    return {
+      totalHours: Number(totalHours.toFixed(1)),
+      avgPerDay: Number((totalHours / 7).toFixed(1)),
+      mostProductiveDay,
+    };
+  } catch (error) {
+    console.error("Error getting weekly stats:", error);
     return {
       totalHours: 0,
       avgPerDay: 0,
       mostProductiveDay: "None",
     };
   }
-
-  // Calculate total hours
-  const totalMinutes = sessions.reduce(
-    (sum, session) => sum + (session.durationMinutes || 0),
-    0,
-  );
-  const totalHours = totalMinutes / 60;
-
-  // Calculate average per day (totalHours / 7)
-  const avgPerDay = totalHours / 7;
-
-  // Find most productive day
-  const dayTotals: Record<string, number> = {};
-
-  sessions.forEach((session) => {
-    const dateString = new Date(session.startTime).toISOString().split("T")[0];
-    dayTotals[dateString] =
-      (dayTotals[dateString] || 0) + (session.durationMinutes || 0);
-  });
-
-  let mostProductiveDay = "None";
-  let maxMinutes = 0;
-
-  Object.entries(dayTotals).forEach(([date, minutes]) => {
-    if (minutes > maxMinutes) {
-      maxMinutes = minutes;
-      mostProductiveDay = date;
-    }
-  });
-
-  return {
-    totalHours: Math.round(totalHours * 100) / 100,
-    avgPerDay: Math.round(avgPerDay * 100) / 100,
-    mostProductiveDay,
-  };
-};
+}

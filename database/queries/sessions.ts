@@ -113,3 +113,7 @@ export const getSessionsByGoal = async (goalId: string): Promise<Session[]> => {
 
   return sessions;
 };
+
+// export const deleteActiveSessions = async (): Promise<void> => {
+//   await db.delete(focusSessions).where(eq(focusSessions.status, "active"))
+// };

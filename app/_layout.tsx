@@ -9,8 +9,9 @@ import "react-native-reanimated";
 import { runMigrations } from "../database/migrate";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Toast, { BaseToast, ErrorToast } from "react-native-toast-message";
+// import { deleteActiveSessions } from "@/database/queries/sessions";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -40,13 +41,15 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [isDbReady, setIsDbReady] = useState(false);
 
-  useEffect(() => {
-    runMigrations()
-      .then(() => setIsDbReady(true))
-      .catch((error) => {
-        console.error("Failed to run migrations:", error);
-      });
+  const fetchData = useCallback(async () => {
+    await runMigrations();
+    // await deleteActiveSessions();
+    setIsDbReady(true);
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   if (!isDbReady) {
     return null; // or a loading indicator

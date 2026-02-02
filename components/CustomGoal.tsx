@@ -127,7 +127,7 @@ const CustomGoal = ({
           {/* Efficiency Percentage - Large and Prominent */}
           <View style={styles.efficiencyContainer}>
             <Text style={[styles.efficiencyNumber, { color }]}>
-              {efficiency ?? 0}
+              {efficiency?.toFixed(1) ?? 0}
             </Text>
             <Text style={styles.efficiencyPercent}>%</Text>
           </View>

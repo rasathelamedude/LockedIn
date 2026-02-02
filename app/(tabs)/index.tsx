@@ -3,6 +3,7 @@ import { COLORS, RADIUS, SPACING } from "@/constants/styles";
 import { getTodayFocusHours } from "@/database/queries/analytics";
 import { Goal } from "@/database/queries/goals";
 import { useGoalStore } from "@/store/goalStore";
+import { useTimerStore } from "@/store/timerStore";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -26,9 +27,15 @@ const Home = () => {
   const goals = useGoalStore((state) => state.goals);
   const loading = useGoalStore((state) => state.loading);
 
+  const sessionId = useTimerStore((state) => state.sessionId);
+  const activeGoalId = useTimerStore((state) => state.goalId);
+  const timeRemaining = useTimerStore((state) => state.timeRemaining);
+  const isRunning = useTimerStore((state) => state.isRunning);
+
   const fetchData = useCallback(async () => {
     await loadGoals();
     const hours = await getTodayFocusHours();
+    console.log(`Today's hours: ${hours}`);
     setTodayHours(hours);
   }, [loadGoals]);
 
@@ -45,6 +52,9 @@ const Home = () => {
     await fetchData();
     setRefreshing(false);
   }, [fetchData]);
+
+  // Find active goal
+  const activeGoal = goals.find((goal: Goal) => goal.id === activeGoalId);
 
   if (loading && goals.length === 0) {
     return (
@@ -76,6 +86,44 @@ const Home = () => {
             <Text style={styles.subtitle}>ACHIEVE GOALS</Text>
           </View>
         </View>
+
+        {/* Active session indicator */}
+        {sessionId && activeGoalId && (
+          <TouchableOpacity
+            style={styles.activeSessionCard}
+            onPress={() => router.push(`/goal/${activeGoalId}`)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.sessionIconContainer}>
+              <View
+                style={[
+                  styles.pulsingDot,
+                  isRunning && styles.pulsingDotActive,
+                ]}
+              />
+              <MaterialIcons name="timer" size={24} color={COLORS.orange} />
+            </View>
+
+            <View style={styles.sessionInfo}>
+              <Text style={styles.sessionLabel}>
+                {isRunning ? "SESSION IN PROGRESS" : "SESSION PAUSED"}
+              </Text>
+              <Text style={styles.sessionGoalTitle} numberOfLines={1}>
+                {activeGoal?.title}
+              </Text>
+              <Text style={styles.sessionTime}>
+                {Math.floor(timeRemaining / 60)}:{" "}
+                {String(timeRemaining % 60).padStart(2, "0")} remaining
+              </Text>
+            </View>
+
+            <MaterialIcons
+              name="chevron-right"
+              size={24}
+              color={COLORS.textSecondary}
+            />
+          </TouchableOpacity>
+        )}
 
         {/* Today's Progress Card */}
         <View style={styles.progressCard}>
@@ -187,6 +235,59 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 4,
     letterSpacing: 2,
+  },
+  activeSessionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.orange + "15",
+    borderWidth: 1,
+    borderColor: COLORS.orange + "30",
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
+    gap: SPACING.md,
+  },
+  sessionIconContainer: {
+    position: "relative",
+    width: 48,
+    height: 48,
+    backgroundColor: COLORS.orange + "20",
+    borderRadius: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  pulsingDot: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: COLORS.textSecondary,
+  },
+  pulsingDotActive: {
+    backgroundColor: COLORS.green,
+  },
+  sessionInfo: {
+    flex: 1,
+  },
+  sessionLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: COLORS.orange,
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  sessionGoalTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: COLORS.text,
+    marginBottom: 2,
+  },
+  sessionTime: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontWeight: "600",
   },
   progressCard: {
     backgroundColor: COLORS.cardBg,
