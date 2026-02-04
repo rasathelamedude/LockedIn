@@ -55,7 +55,6 @@ export const dailyProgress = sqliteTable("daily_progress", {
     .primaryKey()
     .$defaultFn(() => Crypto.randomUUID()),
   date: text("date").notNull().unique(), // YYYY-MM-DD
-  streakCount: integer("streak_count").notNull().default(1),
   totalMinutes: real("total_minutes").notNull().default(0),
   goalsWorkedOn: integer("goals_worked_on").notNull().default(0),
 });

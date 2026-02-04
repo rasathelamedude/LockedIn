@@ -45,7 +45,6 @@ export async function runMigrations() {
       CREATE TABLE IF NOT EXISTS daily_progress (
         id TEXT PRIMARY KEY,
         date TEXT NOT NULL UNIQUE,
-        streak_count INTEGER NOT NULL DEFAULT 1,
         total_minutes REAL NOT NULL DEFAULT 0,
         goals_worked_on INTEGER NOT NULL DEFAULT 0
       );

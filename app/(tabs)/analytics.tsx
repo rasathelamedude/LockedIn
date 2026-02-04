@@ -1,6 +1,5 @@
 import { COLORS, RADIUS, SPACING } from "@/constants/styles";
 import {
-  getStreakCount,
   getTodayFocusHours,
   getWeeklyStats,
 } from "@/database/queries/analytics";
@@ -12,7 +11,6 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 const Analytics = () => {
   const [todayHours, setTodayHours] = useState(0);
-  const [streak, setStreak] = useState(0);
   const [activeGoalsCount, setActiveGoalsCount] = useState(0);
   const [weeklyStats, setWeeklyStats] = useState({
     totalHours: 0,
@@ -24,12 +22,10 @@ const Analytics = () => {
     useCallback(() => {
       const fetchData = async () => {
         const hours = await getTodayFocusHours();
-        const streak = await getStreakCount();
         const weeklyStats = await getWeeklyStats();
         const goals = await getAllActiveGoals();
 
         setTodayHours(hours);
-        setStreak(streak);
         setActiveGoalsCount(goals.length);
         setWeeklyStats(weeklyStats);
       };
@@ -65,18 +61,6 @@ const Analytics = () => {
             />
             <Text style={styles.statValue}>{todayHours.toFixed(1)}</Text>
             <Text style={styles.statLabel}>Hours Today</Text>
-          </View>
-
-          {/* Streak */}
-          <View style={styles.statCard}>
-            <MaterialIcons
-              name="local-fire-department"
-              size={24}
-              color={COLORS.orange}
-              style={styles.statIcon}
-            />
-            <Text style={styles.statValue}>{streak}</Text>
-            <Text style={styles.statLabel}>Day Streak</Text>
           </View>
 
           {/* Weekly Hours */}

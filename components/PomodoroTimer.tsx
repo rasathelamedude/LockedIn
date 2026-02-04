@@ -41,7 +41,7 @@ const PomodoroTimer = ({ gradientColors, goalId }: PomodoroTimerProps) => {
     }
 
     // Start a new timer
-    if (!isRunning && timeRemaining === 25 * 60) {
+    if (!isRunning && !activeGoalId && timeRemaining === 25 * 60) {
       try {
         await startTimer(goalId);
       } catch (error) {
@@ -53,7 +53,10 @@ const PomodoroTimer = ({ gradientColors, goalId }: PomodoroTimerProps) => {
           visibilityTime: 3000,
         });
       }
-    } else if (!isRunning && timeRemaining !== 25 * 60) {
+    } else if (!isRunning && activeGoalId && isThisGoalActive && timeRemaining === 25 * 60) {
+      // resume timer
+      resumeTimer();
+    } else if (!isRunning && timeRemaining !== 25 * 60 && isThisGoalActive) {
       // resume timer
       resumeTimer();
     } else if (isRunning && isThisGoalActive) {

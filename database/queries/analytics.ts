@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, eq, gte, lte } from "drizzle-orm";
 import { db } from "../client";
 import { dailyProgress, focusSessions } from "../schema";
 
@@ -12,8 +12,20 @@ function getTodayDateString(): string {
 // Get total focus hours for today;
 export async function getTodayFocusHours(): Promise<number> {
   const today = new Date();
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+  const startOfDay = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
+  const endOfDay = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
 
   try {
     // Get all completed sessions from today
@@ -66,7 +78,6 @@ export const getTodayProgress = async (): Promise<DailyProgress> => {
       date: today,
       totalMinutes: 0,
       goalsWorkedOn: 0,
-      streakCount: 0,
     })
     .returning();
 
@@ -107,18 +118,6 @@ export const updateTodayProgress = async (
   // Calculate streak by checking if yesterday had progress
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayString = yesterday.toISOString().split("T")[0];
-
-  const yesterdayProgress = await db
-    .select()
-    .from(dailyProgress)
-    .where(eq(dailyProgress.date, yesterdayString))
-    .get();
-
-  // If yesterday had progress then add 1 to streak count, otherwise set it to 0
-  const newStreakCount = yesterdayProgress
-    ? yesterdayProgress.streakCount + 1
-    : 1;
 
   // Update
   await db
@@ -126,41 +125,9 @@ export const updateTodayProgress = async (
     .set({
       totalMinutes: newDuration,
       goalsWorkedOn: newGoalsWorkedOn,
-      streakCount: newStreakCount,
     })
     .where(eq(dailyProgress.id, progress.id));
 };
-
-// Get streak count (consecutive days with sessions)
-export async function getStreakCount(): Promise<number> {
-  try {
-    const allProgress = await db
-      .select()
-      .from(dailyProgress)
-      .orderBy(desc(dailyProgress.date));
-
-    if (allProgress.length === 0) return 0;
-
-    let streak = 0;
-    const today = new Date().setHours(0, 0, 0, 0);
-
-    for (let i = 0; i < allProgress.length; i++) {
-      const progressDate = new Date(allProgress[i].date).setHours(0, 0, 0, 0);
-      const expectedDate = today - streak * 86400000;
-
-      if (progressDate === expectedDate && allProgress[i].totalMinutes > 0) {
-        streak++;
-      } else {
-        break;
-      }
-    }
-
-    return Math.max(streak, allProgress[0].totalMinutes > 0 ? 1 : 0);
-  } catch (error) {
-    console.error("Error getting streak:", error);
-    return 0;
-  }
-}
 
 export async function getWeeklyStats(): Promise<{
   totalHours: number;

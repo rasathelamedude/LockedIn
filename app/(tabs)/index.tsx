@@ -35,7 +35,6 @@ const Home = () => {
   const fetchData = useCallback(async () => {
     await loadGoals();
     const hours = await getTodayFocusHours();
-    console.log(`Today's hours: ${hours}`);
     setTodayHours(hours);
   }, [loadGoals]);
 

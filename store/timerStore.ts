@@ -136,6 +136,7 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
         sessionId: null,
         goalId: null,
         timeRemaining: 25 * 60,
+        loading: false,
       });
     } catch (error) {
       console.error(`Failed to complete a timer: ${error}`);
@@ -165,6 +166,7 @@ export const useTimerStore = create<TimerStore>((set, get) => ({
         sessionId: null,
         goalId: null,
         timeRemaining: 25 * 60,
+        loading: false,
       });
     } catch (error) {
       console.error(`Failed to cancel a timer: ${error}`);
