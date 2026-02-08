@@ -9,6 +9,27 @@ We start ambitious projects, online courses, side projects, and skill developmen
 ## The Solution
 LockedIn keeps your unfinished goals visible and holds you accountable. Unlike traditional todo apps that focus on daily task completion, LockedIn stays with you throughout your entire goal journey, tracking consistency and focus until you cross the finish line.
 
+## Screenshots
+
+### Home & Goal Management
+<p align="center">
+  <img src="screenshots/lockedin-1.jpg" width="250" alt="Home Screen with Active Session" />
+  <img src="screenshots/lockedin-2.jpg" width="250" alt="Focus Session in Progress" />
+  <img src="screenshots/lockedin-3.jpg" alt="Goal Detail with Timer Blocked" width="250" />
+</p>
+
+### Goal Creation & Analytics
+<p align="center">
+  <img src="screenshots/lockedin-4.jpg" width="250" alt="Create New Goal" />
+  <img src="screenshots/lockedin-5.jpg" width="250" alt="Analytics Dashboard" />
+</p>
+
+### AI Assistant
+<p align="center">
+  <img src="screenshots/lockedin-6.jpg" width="250" alt="AI Assistant Chat" />
+  <img src="screenshots/lockedin-7.jpg" width="250" alt="AI Goal Optimization Advice" />
+</p>
+
 ## Core Features
 - **Visual Goal Stack**: All active goals displayed as stacked cards, creating a tangible representation of your commitments
 - **Efficiency Tracking**: Real-time calculation based on focus time, consistency, and deadline proximity
